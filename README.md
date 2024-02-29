@@ -11,7 +11,7 @@ find ways in which your existing proofs can be improved.
 Add this to your lakefile.lean:
 
 ```lean
-require tryAtEachStep from git "https://github.com/dwrensha/tryAtEachStep"
+require tryAtEachStep from git "https://github.com/dwrensha/tryAtEachStep" @ "main"
 ```
 
 Then do this:
