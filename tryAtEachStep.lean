@@ -176,5 +176,5 @@ def toAbsolute (path : FilePath) : IO FilePath := do
 unsafe def main (args : List String) : IO Unit := do
   match args with
   | [tac, leanfile] => processFile tac (← toAbsolute ⟨leanfile⟩)
-  | _ => throw $ IO.userError "usage: tryTacticAtEachStep TACTIC LEAN_FILE"
+  | _ => throw $ IO.userError "usage: tryAtEachStep TACTIC LEAN_FILE"
 
