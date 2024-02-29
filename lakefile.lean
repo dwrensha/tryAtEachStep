@@ -13,3 +13,4 @@ require std from git "https://github.com/leanprover/std4" @ "v4.6.0"
 @[default_target]
 lean_exe «tryAtEachStep» where
   root := `tryAtEachStep
+  supportInterpreter := true

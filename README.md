@@ -22,6 +22,7 @@ $ lake exe tryAtEachStep exact? Foo/Bar.lean
 
 ## TODO
 
+* Tests
 * Run in parallel on all `.lean` files in a project.
 * Add tactic imports in input files. (Currently the input file needs know about the tactic.)
 * Better handle situations where there are more than one active goal.
