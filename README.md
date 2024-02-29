@@ -42,5 +42,6 @@ $ lake exe tryAtEachStep exact? Foo/Bar.lean
 
 * Tests
 * Run in parallel on all `.lean` files in a project.
-* Add tactic imports in input files. (Currently the input file needs know about the tactic.)
-* Better handle situations where there are more than one active goal.
+* Support tactics that aren't imported by the input file.
+* Better handling of situations where there are more than one active goal.
+* Operate on terms. (Currently only operates on the tactic steps of the given file.)
