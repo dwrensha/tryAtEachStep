@@ -22,6 +22,7 @@ $ lake exe tryAtEachStep exact? Foo/Bar.lean
 
 ## Example findings:
 
+* [mathlib#11093](https://github.com/leanprover-community/mathlib4/pull/11093)
 * [mathlib@4900a2c5](https://github.com/leanprover-community/mathlib4/commit/4900a2c5b000492d1d0c6730f26d77a570b1a66c)
 * [mathlib@866dfe56](https://github.com/leanprover-community/mathlib4/commit/866dfe56cc0541fbe0331ecacd1687bb99172f39)
 * [mathlib@a6f77074](https://github.com/leanprover-community/mathlib4/commit/a6f770740f4c07b236c336115f4de99c28cd8910)
@@ -43,5 +44,6 @@ $ lake exe tryAtEachStep exact? Foo/Bar.lean
 * Tests
 * Run in parallel on all `.lean` files in a project.
 * Support tactics that aren't imported by the input file.
-* Better handling of situations where there are more than one active goal.
+* Better handling of situations where there are multiple active goals.
+* Report performance statistics of existing and new tactic.
 * Operate on terms. (Currently only operates on the tactic steps of the given file.)
