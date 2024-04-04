@@ -8,7 +8,7 @@ package «tryAtEachStep» where
     ⟨`relaxedAutoImplicit, false⟩
   ]
 
-require std from git "https://github.com/leanprover/std4" @ "main"
+require std from git "https://github.com/leanprover/std4" @ "v4.7.0"
 
 @[default_target]
 lean_exe «tryAtEachStep» where
