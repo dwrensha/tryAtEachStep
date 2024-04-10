@@ -43,8 +43,14 @@ def isSubstantive (t : TacticInfo) : Bool :=
   | some ``Lean.Parser.Tactic.paren => false
   | _ => true
 
-
 end Lean.Elab.TacticInfo
+
+namespace TryAtEachStep
+
+structure Config where
+  tac : String := "exact?"
+  probfile : FilePath := "."
+  additionalImports : List String := []
 
 def visitTacticInfo (tryTacticStx : Syntax) (ci : ContextInfo) (ti : TacticInfo) : MetaM Unit := do
   if not ti.isSubstantive then return ()
@@ -130,15 +136,17 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
   | none =>
     pure (if s.stxStack.isEmpty then .missing else s.stxStack.back)
 
-unsafe def processFile (tac : String) (path : FilePath) : IO Unit := do
+unsafe def processFile (config : Config) : IO Unit := do
   searchPathRef.set compile_time_search_path%
-  let input ← IO.FS.readFile path
+  let mut input ← IO.FS.readFile config.probfile
+  for im in config.additionalImports do
+    input := "import " ++ im ++ "\n" ++ input
   enableInitializersExecution
-  let inputCtx := Parser.mkInputContext input path.toString
+  let inputCtx := Parser.mkInputContext input config.probfile.toString
   let (header, parserState, messages) ← Parser.parseHeader inputCtx
   let (env, messages) ← processHeader header {} messages inputCtx
 
-  let tryTacticStx ← parseTactic env tac
+  let tryTacticStx ← parseTactic env config.tac
 
   if messages.hasErrors then
     for msg in messages.toList do
@@ -146,7 +154,7 @@ unsafe def processFile (tac : String) (path : FilePath) : IO Unit := do
         println! "ERROR: {← msg.toString}"
     throw $ IO.userError "Errors during import; aborting"
 
-  let env := env.setMainModule (← moduleNameOfFileName path none)
+  let env := env.setMainModule (← moduleNameOfFileName config.probfile none)
   let commandState := { Command.mkState env messages {} with infoState.enabled := true }
 
   let (steps, _frontendState) ← (processCommands.run { inputCtx := inputCtx }).run
@@ -173,8 +181,37 @@ def toAbsolute (path : FilePath) : IO FilePath := do
     let cwd ← IO.currentDir
     pure $ cwd / path
 
-unsafe def main (args : List String) : IO Unit := do
-  match args with
-  | [tac, leanfile] => processFile tac (← toAbsolute ⟨leanfile⟩)
-  | _ => throw $ IO.userError "usage: tryAtEachStep TACTIC LEAN_FILE"
+def parseArgs (args : Array String) : IO Config := do
+  let mut cfg : Config := {}
+  let mut idx := 0
+  let mut positional_count := 0
+  while idx < args.size do
+    if args[idx]! == "--imports"
+    then
+      idx := idx + 1
+      let imports := args[idx]!.splitOn ","
+      cfg := {cfg with additionalImports := imports}
+    else if positional_count == 0
+    then
+      let tac := args[idx]!
+      cfg := {cfg with tac := tac}
+      positional_count := positional_count + 1
+    else if positional_count == 1
+    then
+      let probfile := (← toAbsolute ⟨args[idx]!⟩)
+      cfg := {cfg with probfile := probfile}
+      positional_count := positional_count + 1
+    else
+      throw $ IO.userError "too many positional arguments!"
 
+    idx := idx + 1
+    pure ()
+
+  if positional_count != 2
+  then
+    throw $ IO.userError "usage: tryAtEachStep [OPTIONS] TACTIC LEAN_FILE"
+  return cfg
+
+unsafe def main (args : Array String) : IO Unit := do
+  let cfg ← parseArgs args
+  processFile cfg
