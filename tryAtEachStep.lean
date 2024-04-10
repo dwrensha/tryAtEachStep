@@ -181,6 +181,7 @@ def toAbsolute (path : FilePath) : IO FilePath := do
     let cwd ← IO.currentDir
     pure $ cwd / path
 
+
 def parseArgs (args : Array String) : IO Config := do
   let mut cfg : Config := {}
   let mut idx := 0
@@ -212,6 +213,8 @@ def parseArgs (args : Array String) : IO Config := do
     throw $ IO.userError "usage: tryAtEachStep [OPTIONS] TACTIC LEAN_FILE"
   return cfg
 
-unsafe def main (args : Array String) : IO Unit := do
-  let cfg ← parseArgs args
-  processFile cfg
+end TryAtEachStep
+
+unsafe def main (args : List String) : IO Unit := do
+  let cfg ← TryAtEachStep.parseArgs args.toArray
+  TryAtEachStep.processFile cfg
