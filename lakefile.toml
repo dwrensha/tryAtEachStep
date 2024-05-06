@@ -1,0 +1,16 @@
+name = "tryAtEachStep"
+defaultTargets = ["tryAtEachStep"]
+
+[leanOptions]
+pp.unicode.fun = true
+autoImplicit = false
+relaxedAutoImplicit = false
+
+[[require]]
+name = "std"
+git = "https://github.com/leanprover/std4"
+rev = "v4.8.0-rc1"
+
+[[lean_exe]]
+name = "tryAtEachStep"
+supportInterpreter = true
