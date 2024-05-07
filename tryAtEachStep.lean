@@ -37,6 +37,7 @@ def isSubstantive (t : TacticInfo) : Bool :=
   | some ``cdot => false
   | some ``cdotTk => false
   | some ``Lean.Parser.Tactic.inductionAlt => false
+  | some ``Lean.Parser.Tactic.case => false
   | some ``Lean.Parser.Term.byTactic => false
   | some ``Lean.Parser.Tactic.tacticSeq => false
   | some ``Lean.Parser.Tactic.tacticSeq1Indented => false
