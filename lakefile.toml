@@ -7,9 +7,9 @@ autoImplicit = false
 relaxedAutoImplicit = false
 
 [[require]]
-name = "std"
-git = "https://github.com/leanprover/std4"
-rev = "v4.8.0-rc1"
+name = "batteries"
+git = "https://github.com/leanprover-community/batteries"
+rev = "main"
 
 [[lean_exe]]
 name = "tryAtEachStep"
