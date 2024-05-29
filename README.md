@@ -22,6 +22,8 @@ $ lake exe tryAtEachStep exact? Foo/Bar.lean
 
 ## Example findings:
 
+* [mathlib#13335](https://github.com/leanprover-community/mathlib4/pull/13335)
+* [mathlib#13334](https://github.com/leanprover-community/mathlib4/pull/13334)
 * [mathlib#12715](https://github.com/leanprover-community/mathlib4/pull/12715)
 * [mathlib#12678](https://github.com/leanprover-community/mathlib4/pull/12678)
 * [mathlib#11093](https://github.com/leanprover-community/mathlib4/pull/11093)
