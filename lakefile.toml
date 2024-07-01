@@ -9,7 +9,7 @@ relaxedAutoImplicit = false
 [[require]]
 name = "batteries"
 git = "https://github.com/leanprover-community/batteries"
-rev = "v4.9.0"
+rev = "main"
 
 [[lean_exe]]
 name = "tryAtEachStep"
