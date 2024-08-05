@@ -5,7 +5,6 @@ Authors: David Renshaw
 -/
 
 import Lean
-import Batteries.Lean.Util.Path
 
 /-!
 Tool to try running a tactic (like `exact?` or `rw_search`) at every

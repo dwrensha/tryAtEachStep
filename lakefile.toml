@@ -6,11 +6,6 @@ pp.unicode.fun = true
 autoImplicit = false
 relaxedAutoImplicit = false
 
-[[require]]
-name = "batteries"
-git = "https://github.com/leanprover-community/batteries"
-rev = "v4.10.0"
-
 [[lean_exe]]
 name = "tryAtEachStep"
 supportInterpreter = true
