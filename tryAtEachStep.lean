@@ -112,7 +112,7 @@ def traverseForest (tryTacticStx : Syntax) (steps : List (Environment × InfoSta
   let t := steps.map fun (env, infoState) ↦
     (infoState.trees.toList.map fun t ↦
       (Lean.Elab.InfoTree.foldInfo (visitInfo tryTacticStx env) [] t).reverse)
-  t.join.join
+  t.flatten.flatten
 
 partial def processCommands : Frontend.FrontendM (List (Environment × InfoState)) := do
   let env := (←get).commandState.env
