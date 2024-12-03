@@ -9,3 +9,10 @@ relaxedAutoImplicit = false
 [[lean_exe]]
 name = "tryAtEachStep"
 supportInterpreter = true
+
+
+[[lean_lib]]
+name = "TryAtEachStepTest"
+globs = ["TryAtEachStepTest.+"]
+leanOptions = {linter.missingDocs = false}
+
