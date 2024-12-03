@@ -7,3 +7,6 @@ theorem foo (a : Nat) : a + 0 = 0 + a := by
     rw [Nat.add_zero]
     rewrite [Nat.zero_add]
     rfl
+
+theorem parallel {P Q : Prop} (p : P) (q : Q) : P ∧ Q := by
+  constructor <;> assumption
