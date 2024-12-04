@@ -53,6 +53,84 @@ structure Config where
   probfile : FilePath := "."
   additionalImports : List String := []
 
+structure Span where
+  startPos: String.Pos
+  endPos: String.Pos
+deriving BEq, Hashable
+
+instance : Ord Span where
+ compare sp1 sp2 := match sp1, sp2 with
+ | ⟨s1, e1⟩, ⟨s2, e2⟩ =>
+   match Ord.compare s1.1 s2.1 with
+   | .lt => .lt
+   | .gt => .gt
+   | .eq =>
+     -- we want bigger spans to come first
+     match Ord.compare e1.1 e2.1 with
+     | .lt => .gt
+     | .gt => .lt
+     | .eq => .eq
+
+def Span.ofSyntax (stx: Syntax) : Option Span := do
+  let startPos ← stx.getPos?
+  let endPos ← stx.getPos?
+  return ⟨startPos, endPos⟩
+
+structure FocusedStep where
+  env: Environment -- environment from before the current command
+  ci: ContextInfo
+  ti: TacticInfo
+
+structure Step where
+  stx: Syntax
+  focused_steps: List FocusedStep
+
+abbrev StepMap := RBMap Span Step Ord.compare
+
+def StepMap.empty : StepMap := RBMap.empty
+
+def StepMap.maybe_add (sm : StepMap) (env : Environment)
+    (ci : ContextInfo) (ti : TacticInfo) : StepMap := Id.run do
+  let some span := Span.ofSyntax ti.stx | return sm
+  let fs : FocusedStep := ⟨env, ci, ti⟩
+  match sm.find? span with
+  | some step =>
+    let step' := {step with focused_steps := step.focused_steps ++ [fs]}
+    return sm.insert span step'
+  | none => return sm.insert span ⟨ti.stx, [fs]⟩
+
+def visitTacticInfo' (env : Environment) (ci : ContextInfo) (ti : TacticInfo) (step_map: StepMap) :
+    StepMap := Id.run do
+  if not ti.isSubstantive then return step_map
+  if let .some (.synthetic ..) := ti.stx.getHeadInfo? then
+     -- Not actual concrete syntax the user wrote. Ignore.
+     return step_map
+  return StepMap.maybe_add step_map env ci ti
+
+def visitInfo' (env : Environment) (ci : ContextInfo)
+    (info : Info) (step_map : StepMap)
+    : StepMap :=
+  match info with
+  | .ofTacticInfo ti => visitTacticInfo' env ci ti step_map
+  | _ => step_map
+
+def traverseForest' (steps : List (Environment × InfoState)) : StepMap := Id.run do
+  let mut step_map := StepMap.empty
+  for (env, infoState) in steps do
+    for t in infoState.trees.toList do
+        step_map := Lean.Elab.InfoTree.foldInfo (visitInfo' env) step_map t
+  return step_map
+
+def tryTactic (tryTacticStx : Syntax) (step: Step) : IO Unit := do
+  for {ci, ti, env} in step.focused_steps do
+    ci.runMetaM default do
+      setEnv env
+      let src := ci.fileMap.source
+      --let startPosition := ci.fileMap.toPosition sp
+      --let s := Substring.mk src sp ep
+      pure ()
+  pure ()
+
 def visitTacticInfo (tryTacticStx : Syntax) (ci : ContextInfo) (ti : TacticInfo) : MetaM Unit := do
   if not ti.isSubstantive then return ()
   let src := ci.fileMap.source
@@ -161,10 +239,10 @@ unsafe def processFile (config : Config) : IO Unit := do
   let (steps, _frontendState) ← (processCommands.run { inputCtx := inputCtx }).run
     { commandState := commandState, parserState := parserState, cmdPos := parserState.pos }
 
-  for t in traverseForest tryTacticStx steps do
-    try t
-    catch e =>
-      println! "caught top level: {e}"
+  let step_map := traverseForest' steps
+  for (_, step) in step_map do
+    pure ()
+    --println! step.stx
   pure ()
 
 def pathOfProbId (probId : String) : IO FilePath := do
