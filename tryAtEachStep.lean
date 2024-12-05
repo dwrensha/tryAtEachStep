@@ -53,19 +53,84 @@ structure Config where
   probfile : FilePath := "."
   additionalImports : List String := []
 
-def visitTacticInfo (tryTacticStx : Syntax) (ci : ContextInfo) (ti : TacticInfo) : MetaM Unit := do
-  if not ti.isSubstantive then return ()
-  let src := ci.fileMap.source
-  let stx := ti.stx
-  match stx.getHeadInfo? with
-  | .some (.synthetic ..) =>
+structure Span where
+  startPos: String.Pos
+  endPos: String.Pos
+deriving BEq, Hashable
+
+instance : Ord Span where
+ compare sp1 sp2 := match sp1, sp2 with
+ | ⟨s1, e1⟩, ⟨s2, e2⟩ =>
+   match Ord.compare s1.1 s2.1 with
+   | .lt => .lt
+   | .gt => .gt
+   | .eq =>
+     -- we want bigger spans to come first
+     match Ord.compare e1.1 e2.1 with
+     | .lt => .gt
+     | .gt => .lt
+     | .eq => .eq
+
+def Span.ofSyntax (stx: Syntax) : Option Span := do
+  let startPos ← stx.getPos?
+  let endPos ← stx.getTailPos?
+  return ⟨startPos, endPos⟩
+
+structure FocusedStep where
+  env: Environment -- environment from before the current command
+  ci: ContextInfo
+  ti: TacticInfo
+
+structure Step where
+  stx: Syntax
+  focused_steps: List FocusedStep
+
+abbrev StepMap := RBMap Span Step Ord.compare
+
+def StepMap.empty : StepMap := RBMap.empty
+
+def StepMap.maybe_add (sm : StepMap) (env : Environment)
+    (ci : ContextInfo) (ti : TacticInfo) : StepMap := Id.run do
+  let some span := Span.ofSyntax ti.stx | return sm
+  let fs : FocusedStep := ⟨env, ci, ti⟩
+  match sm.find? span with
+  | some step =>
+    let step' := {step with focused_steps := step.focused_steps ++ [fs]}
+    return sm.insert span step'
+  | none => return sm.insert span ⟨ti.stx, [fs]⟩
+
+def visitTacticInfo (env : Environment) (ci : ContextInfo) (ti : TacticInfo) (step_map: StepMap) :
+    StepMap := Id.run do
+  if not ti.isSubstantive then return step_map
+  if let .some (.synthetic ..) := ti.stx.getHeadInfo? then
      -- Not actual concrete syntax the user wrote. Ignore.
-    return ()
-  | _ =>  pure ()
-  let some sp := stx.getPos? | return ()
-  let some ep := stx.getTailPos? | return ()
-  let startPosition := ci.fileMap.toPosition sp
-  let s := Substring.mk src sp ep
+     return step_map
+  return StepMap.maybe_add step_map env ci ti
+
+def visitInfo (env : Environment) (ci : ContextInfo)
+    (info : Info) (step_map : StepMap)
+    : StepMap :=
+  match info with
+  | .ofTacticInfo ti => visitTacticInfo env ci ti step_map
+  | _ => step_map
+
+def traverseForest (steps : List (Environment × InfoState)) : StepMap := Id.run do
+  let mut step_map := StepMap.empty
+  for (env, infoState) in steps do
+    for t in infoState.trees.toList do
+        step_map := Lean.Elab.InfoTree.foldInfo (visitInfo env) step_map t
+  return step_map
+
+def tryTactic (tryTacticStx : Syntax) (span : Span) (step: Step) : IO Unit := do
+  -- For now, we ignore cases where a tactic applies to multiple goals simultaneously.
+  let [{ci, ti, env}] := step.focused_steps | do IO.print "_"; return
+
+  ci.runMetaM default do
+  setEnv env
+  let src := ci.fileMap.source
+
+  let startPosition := ci.fileMap.toPosition span.startPos
+  let s := Substring.mk src span.startPos span.endPos
   for g in ti.goalsBefore do
     IO.print "."
     (← IO.getStdout).flush
@@ -95,24 +160,7 @@ def visitTacticInfo (tryTacticStx : Syntax) (ci : ContextInfo) (ti : TacticInfo)
       pure ()
 
     pure ()
-
-def visitInfo (tryTacticStx : Syntax) (env : Environment) (ci : ContextInfo)
-    (info : Info) (acc : List (IO Unit))
-    : List (IO Unit) :=
-  match info with
-  | .ofTacticInfo ti =>
-    (ci.runMetaM default
-     (do setEnv env
-         try visitTacticInfo tryTacticStx ci ti
-         catch e =>
-            println! "caught: {←e.toMessageData.toString}")) :: acc
-  | _ => acc
-
-def traverseForest (tryTacticStx : Syntax) (steps : List (Environment × InfoState)) : List (IO Unit) :=
-  let t := steps.map fun (env, infoState) ↦
-    (infoState.trees.toList.map fun t ↦
-      (Lean.Elab.InfoTree.foldInfo (visitInfo tryTacticStx env) [] t).reverse)
-  t.flatten.flatten
+  pure ()
 
 partial def processCommands : Frontend.FrontendM (List (Environment × InfoState)) := do
   let env := (←get).commandState.env
@@ -161,10 +209,11 @@ unsafe def processFile (config : Config) : IO Unit := do
   let (steps, _frontendState) ← (processCommands.run { inputCtx := inputCtx }).run
     { commandState := commandState, parserState := parserState, cmdPos := parserState.pos }
 
-  for t in traverseForest tryTacticStx steps do
-    try t
-    catch e =>
-      println! "caught top level: {e}"
+  let step_map := traverseForest steps
+  for (span, step) in step_map do
+    tryTactic tryTacticStx span step
+    pure ()
+    --println! step.stx
   pure ()
 
 def pathOfProbId (probId : String) : IO FilePath := do
