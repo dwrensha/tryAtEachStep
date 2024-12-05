@@ -76,11 +76,18 @@ def Span.ofSyntax (stx: Syntax) : Option Span := do
   let endPos ← stx.getTailPos?
   return ⟨startPos, endPos⟩
 
+/-- An individual execution of a tactic. -/
 structure FocusedStep where
-  env: Environment -- environment from before the current command
+  /-- environment from before the current command -/
+  env: Environment
+
   ci: ContextInfo
   ti: TacticInfo
 
+/--
+A textual tactic step in a proof. May represent multiple actual
+executions of the tactic, e.g. after `all_goals` or `<;>`.
+-/
 structure Step where
   stx: Syntax
   focused_steps: List FocusedStep
