@@ -148,10 +148,19 @@ def tryTactic (tryTacticStx : Syntax) (span : Span) (step: Step) : IO Unit := do
     let dotac := Term.TermElabM.run (ctx := {declName? := ci.parentDecl?})
                       <| Tactic.run g (Tactic.evalTactic tryTacticStx)
     try
-      let ((mvars, _tstate), _mstate) ← dotac.run {} { mctx := mctx }
+      let ((mvars, _tstate), after_state) ← dotac.run {} { mctx := mctx }
       let msgs := (← liftM (m := CoreM) get).messages
       if mvars.length == 0
       then
+        let _ ← match ti.mctxAfter.getExprAssignmentExp g,
+                       after_state.mctx.getExprAssignmentExp g with
+         | some e1, some e2 =>
+            if e1 == e2 then
+              IO.print "="
+              return
+            else
+              pure ()
+         | _, _ => pure ()
         println! "\nline {startPosition.line}, col {startPosition.column}:\n{s}"
         for msg in msgs.toList do
           println! "* {←msg.data.toString}"

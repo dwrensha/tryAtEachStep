@@ -1,5 +1,9 @@
 namespace Test
 
+theorem hyp {p : Prop} (h : p) : p := by exact h
+
+theorem conjuction {p q : Prop} (hp : p) (hq : q) : p ∧ q := by exact ⟨hp, hq⟩
+
 theorem foo (a : Nat) : a + 0 = 0 + a := by
   induction a with
   | zero => simp
