@@ -139,6 +139,7 @@ structure TryTacticResult where
   oldProofLength : Nat
   newProofLength : Nat
   lengthReduction : Int
+  fewerSteps: Bool
   message : Option String
 deriving Lean.ToJson
 
@@ -187,7 +188,8 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       for msg in msgs.toList do
         IO.eprintln s!"* {←msg.data.toString}"
         message := message ++ s!"{←msg.data.toString}"
-      if 0 < ti.goalsAfter.length then
+      let fewerSteps := 0 < ti.goalsAfter.length
+      if fewerSteps then
         IO.eprintln "shortened proof!"
       let oldProofLength := s!"{e1}".length
       let newProofLength := s!"{e2}".length
@@ -200,6 +202,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
         oldProofLength
         newProofLength
         lengthReduction := (oldProofLength : Int) - (newProofLength : Int)
+        fewerSteps
         message
       }
       newResult := result
