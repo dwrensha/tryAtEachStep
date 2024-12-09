@@ -143,6 +143,13 @@ structure TryTacticResult where
   message : Option String
 deriving Lean.ToJson
 
+def stringOfTerm (e : Expr) (mctx : MetavarContext) : CoreM String := do
+  let mnd : MetaM String := do
+      let e' ← instantiateMVars e
+      return s!"{e'}"
+  let (s, _) ← mnd.run {} { mctx := mctx }
+  return s
+
 def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : Step) :
     IO (List TryTacticResult) := do
   -- For now, we ignore cases where a tactic applies to multiple goals simultaneously.
@@ -191,8 +198,10 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       let fewerSteps := 0 < ti.goalsAfter.length
       if fewerSteps then
         IO.eprintln "shortened proof!"
-      let oldProofLength := s!"{e1}".length
-      let newProofLength := s!"{e2}".length
+      let e1' ← stringOfTerm e1 ci.mctx
+      let e2' ← stringOfTerm e2 after_state.mctx
+      let oldProofLength := s!"{e1'}".length
+      let newProofLength := s!"{e2'}".length
 
       let result : TryTacticResult := {
         filepath := config.probfile.toString
