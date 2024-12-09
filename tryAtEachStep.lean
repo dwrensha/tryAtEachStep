@@ -53,10 +53,13 @@ structure Config where
   probfile : FilePath := "."
   additionalImports : List String := []
 
+instance : Lean.ToJson String.Pos where
+  toJson x := x.1
+
 structure Span where
   startPos: String.Pos
   endPos: String.Pos
-deriving BEq, Hashable
+deriving BEq, Hashable, Lean.ToJson
 
 instance : Ord Span where
  compare sp1 sp2 := match sp1, sp2 with
@@ -128,9 +131,22 @@ def traverseForest (steps : List (Environment × InfoState)) : StepMap := Id.run
         step_map := Lean.Elab.InfoTree.foldInfo (visitInfo env) step_map t
   return step_map
 
-def tryTactic (tryTacticStx : Syntax) (span : Span) (step: Step) : IO Unit := do
+structure TryTacticResult where
+  filepath : String
+  span : Span
+  originalText : String
+  oldProofLength : Nat
+  newProofLength : Nat
+  lengthReduction : Int
+  message : Option String
+deriving Lean.ToJson
+
+def tryTactic (tryTacticStx : Syntax) (span : Span) (step : Step) :
+    IO (List TryTacticResult) := do
   -- For now, we ignore cases where a tactic applies to multiple goals simultaneously.
-  let [{ci, ti, env}] := step.focused_steps | do IO.print "_"; return
+  let [{ci, ti, env}] := step.focused_steps | do IO.print "_"; return []
+
+  let mut results := []
 
   ci.runMetaM default do
   setEnv env
@@ -157,8 +173,9 @@ def tryTactic (tryTacticStx : Syntax) (span : Span) (step: Step) : IO Unit := do
          | some e1, some e2 =>
             if e1 == e2 then
               IO.print "="
-              return
+              continue
             else
+              --println! "e2 = {e2}"
               pure ()
          | _, _ => pure ()
         println! "\nline {startPosition.line}, col {startPosition.column}:\n{s}"
@@ -176,7 +193,7 @@ def tryTactic (tryTacticStx : Syntax) (span : Span) (step: Step) : IO Unit := do
       pure ()
 
     pure ()
-  pure ()
+  return results
 
 partial def processCommands : Frontend.FrontendM (List (Environment × InfoState)) := do
   let env := (←get).commandState.env
@@ -227,7 +244,7 @@ unsafe def processFile (config : Config) : IO Unit := do
 
   let step_map := traverseForest steps
   for (span, step) in step_map do
-    tryTactic tryTacticStx span step
+    let _ ← tryTactic tryTacticStx span step
     pure ()
     --println! step.stx
   pure ()
