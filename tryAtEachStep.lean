@@ -133,7 +133,8 @@ def traverseForest (steps : List (Environment × InfoState)) : StepMap := Id.run
 
 structure TryTacticResult where
   filepath : String
-  span : Span
+  startLine : Nat
+  startCol : Nat
   originalText : String
   oldProofLength : Nat
   newProofLength : Nat
@@ -141,58 +142,73 @@ structure TryTacticResult where
   message : Option String
 deriving Lean.ToJson
 
-def tryTactic (tryTacticStx : Syntax) (span : Span) (step : Step) :
+def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : Step) :
     IO (List TryTacticResult) := do
   -- For now, we ignore cases where a tactic applies to multiple goals simultaneously.
-  let [{ci, ti, env}] := step.focused_steps | do IO.print "_"; return []
-
-  let mut results := []
+  let [{ci, ti, env}] := step.focused_steps | do IO.eprint "_"; return []
 
   ci.runMetaM default do
+  let mut results := []
+
   setEnv env
   let src := ci.fileMap.source
 
   let startPosition := ci.fileMap.toPosition span.startPos
   let s := Substring.mk src span.startPos span.endPos
   for g in ti.goalsBefore do
-    IO.print "."
-    (← IO.getStdout).flush
+    let mut newResult : Option TryTacticResult := .none
+    IO.eprint "."
+    (← IO.getStderr).flush
     let mctx := ti.mctxBefore
     --let doprint : MetaM _ := Meta.ppGoal g
     --let x ← doprint.run' (s := { mctx := mctx })
     --IO.println x
     let dotac := Term.TermElabM.run (ctx := {declName? := ci.parentDecl?})
                       <| Tactic.run g (Tactic.evalTactic tryTacticStx)
-    try
-      let ((mvars, _tstate), after_state) ← dotac.run {} { mctx := mctx }
-      let msgs := (← liftM (m := CoreM) get).messages
-      if mvars.length == 0
-      then
-        let _ ← match ti.mctxAfter.getExprAssignmentExp g,
-                       after_state.mctx.getExprAssignmentExp g with
-         | some e1, some e2 =>
-            if e1 == e2 then
-              IO.print "="
-              continue
-            else
-              --println! "e2 = {e2}"
-              pure ()
-         | _, _ => pure ()
-        println! "\nline {startPosition.line}, col {startPosition.column}:\n{s}"
-        for msg in msgs.toList do
-          println! "* {←msg.data.toString}"
-        if 0 < ti.goalsAfter.length then
-          println! "shortened proof!"
-      let traceState := (← liftM (m := CoreM) get).traceState
-      for t in traceState.traces.toList do
-        println! "> {←t.msg.toString}"
+    let ((mvars, _tstate), after_state) ← try
+        dotac.run {} { mctx := mctx }
+       catch _e =>
+        --println! "caught: {←e.toMessageData.toString}"
+        continue
+    let msgs := (← liftM (m := CoreM) get).messages
+    if mvars.length == 0
+    then
+      let (e1, e2) ← match ti.mctxAfter.getExprAssignmentExp g,
+                     after_state.mctx.getExprAssignmentExp g with
+       | some e1, some e2 =>
+          if e1 == e2 then
+            IO.eprint "="
+            continue
+          else
+            pure (e1, e2)
+       | _, _ => continue
+      IO.eprintln s!"\nline {startPosition.line}, col {startPosition.column}:\n{s}"
+      let mut message := ""
+      for msg in msgs.toList do
+        IO.eprintln s!"* {←msg.data.toString}"
+        message := message ++ s!"{←msg.data.toString}"
+      if 0 < ti.goalsAfter.length then
+        IO.eprintln "shortened proof!"
+      let oldProofLength := s!"{e1}".length
+      let newProofLength := s!"{e2}".length
 
-      pure ()
-    catch _e =>
-      --println! "caught: {←e.toMessageData.toString}"
-      pure ()
+      let result : TryTacticResult := {
+        filepath := config.probfile.toString
+        startLine := startPosition.line
+        startCol := startPosition.column
+        originalText := s!"{s}"
+        oldProofLength
+        newProofLength
+        lengthReduction := (oldProofLength : Int) - (newProofLength : Int)
+        message
+      }
+      newResult := result
+    let traceState := (← liftM (m := CoreM) get).traceState
+    for t in traceState.traces.toList do
+      IO.eprintln s!"> {←t.msg.toString}"
 
-    pure ()
+    if let .some nr := newResult
+    then results := nr :: results
   return results
 
 partial def processCommands : Frontend.FrontendM (List (Environment × InfoState)) := do
@@ -233,7 +249,7 @@ unsafe def processFile (config : Config) : IO Unit := do
   if messages.hasErrors then
     for msg in messages.toList do
       if msg.severity == .error then
-        println! "ERROR: {← msg.toString}"
+        IO.eprintln s!"ERROR: {← msg.toString}"
     throw $ IO.userError "Errors during import; aborting"
 
   let env := env.setMainModule (← moduleNameOfFileName config.probfile none)
@@ -243,10 +259,13 @@ unsafe def processFile (config : Config) : IO Unit := do
     { commandState := commandState, parserState := parserState, cmdPos := parserState.pos }
 
   let step_map := traverseForest steps
+  let mut results := []
   for (span, step) in step_map do
-    let _ ← tryTactic tryTacticStx span step
+    let res ← tryTactic config tryTacticStx span step
+    results := results ++ res
     pure ()
     --println! step.stx
+  IO.println s!"{Lean.toJson results}"
   pure ()
 
 def pathOfProbId (probId : String) : IO FilePath := do
