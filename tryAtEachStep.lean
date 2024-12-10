@@ -50,7 +50,7 @@ namespace TryAtEachStep
 
 structure Config where
   tac : String := "exact?"
-  probfile : FilePath := "."
+  infile : FilePath := "."
   outfile : Option FilePath := .none
   additionalImports : List String := []
 
@@ -205,7 +205,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       let newProofLength := s!"{e2'}".length
 
       let result : TryTacticResult := {
-        filepath := config.probfile.toString
+        filepath := config.infile.toString
         startLine := startPosition.line
         startCol := startPosition.column
         originalText := s!"{s}"
@@ -249,11 +249,11 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
 
 unsafe def processFile (config : Config) : IO Unit := do
   searchPathRef.set compile_time_search_path%
-  let mut input ← IO.FS.readFile config.probfile
+  let mut input ← IO.FS.readFile config.infile
   for im in config.additionalImports do
     input := "import " ++ im ++ "\n" ++ input
   enableInitializersExecution
-  let inputCtx := Parser.mkInputContext input config.probfile.toString
+  let inputCtx := Parser.mkInputContext input config.infile.toString
   let (header, parserState, messages) ← Parser.parseHeader inputCtx
   let (env, messages) ← processHeader header {} messages inputCtx
 
@@ -265,7 +265,7 @@ unsafe def processFile (config : Config) : IO Unit := do
         IO.eprintln s!"ERROR: {← msg.toString}"
     throw $ IO.userError "Errors during import; aborting"
 
-  let env := env.setMainModule (← moduleNameOfFileName config.probfile none)
+  let env := env.setMainModule (← moduleNameOfFileName config.infile none)
   let commandState := { Command.mkState env messages {} with infoState.enabled := true }
 
   let (steps, _frontendState) ← (processCommands.run { inputCtx := inputCtx }).run
@@ -319,8 +319,8 @@ def parseArgs (args : Array String) : IO Config := do
       positional_count := positional_count + 1
     else if positional_count == 1
     then
-      let probfile := (← toAbsolute ⟨args[idx]!⟩)
-      cfg := {cfg with probfile := probfile}
+      let infile := (← toAbsolute ⟨args[idx]!⟩)
+      cfg := {cfg with infile := infile}
       positional_count := positional_count + 1
     else
       throw $ IO.userError "too many positional arguments!"
