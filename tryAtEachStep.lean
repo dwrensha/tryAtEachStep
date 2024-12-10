@@ -95,7 +95,6 @@ executions of the tactic, e.g. after `all_goals` or `<;>`.
 structure Step where
   stx: Syntax
   focused_steps: List FocusedStep
-  parentName: Name
 
 abbrev StepMap := RBMap Span Step Ord.compare
 
@@ -105,12 +104,11 @@ def StepMap.maybe_add (sm : StepMap) (env : Environment)
     (ci : ContextInfo) (ti : TacticInfo) : StepMap := Id.run do
   let some span := Span.ofSyntax ti.stx | return sm
   let fs : FocusedStep := ⟨env, ci, ti⟩
-  let some name := ci.parentDecl? | return sm
   match sm.find? span with
   | some step =>
     let step' := {step with focused_steps := step.focused_steps ++ [fs]}
     return sm.insert span step'
-  | none => return sm.insert span ⟨ti.stx, [fs], name⟩
+  | none => return sm.insert span ⟨ti.stx, [fs]⟩
 
 def visitTacticInfo (env : Environment) (ci : ContextInfo) (ti : TacticInfo) (step_map: StepMap) :
     StepMap := Id.run do
@@ -158,6 +156,8 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
     IO (List TryTacticResult) := do
   -- For now, we ignore cases where a tactic applies to multiple goals simultaneously.
   let [{ci, ti, env}] := step.focused_steps | do IO.eprint "_"; return []
+
+  let some parentName := ci.parentDecl? | return []
 
   ci.runMetaM default do
   let mut results := []
@@ -209,7 +209,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
 
       let result : TryTacticResult := {
         filepath := config.infile.toString
-        parentName := step.parentName.toString
+        parentName := parentName.toString
         startLine := startPosition.line
         startCol := startPosition.column
         originalText := s!"{s}"
