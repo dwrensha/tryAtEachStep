@@ -95,6 +95,7 @@ executions of the tactic, e.g. after `all_goals` or `<;>`.
 structure Step where
   stx: Syntax
   focused_steps: List FocusedStep
+  parentName: Name
 
 abbrev StepMap := RBMap Span Step Ord.compare
 
@@ -104,11 +105,12 @@ def StepMap.maybe_add (sm : StepMap) (env : Environment)
     (ci : ContextInfo) (ti : TacticInfo) : StepMap := Id.run do
   let some span := Span.ofSyntax ti.stx | return sm
   let fs : FocusedStep := ⟨env, ci, ti⟩
+  let some name := ci.parentDecl? | return sm
   match sm.find? span with
   | some step =>
     let step' := {step with focused_steps := step.focused_steps ++ [fs]}
     return sm.insert span step'
-  | none => return sm.insert span ⟨ti.stx, [fs]⟩
+  | none => return sm.insert span ⟨ti.stx, [fs], name⟩
 
 def visitTacticInfo (env : Environment) (ci : ContextInfo) (ti : TacticInfo) (step_map: StepMap) :
     StepMap := Id.run do
@@ -134,6 +136,7 @@ def traverseForest (steps : List (Environment × InfoState)) : StepMap := Id.run
 
 structure TryTacticResult where
   filepath : String
+  parentName : String
   startLine : Nat
   startCol : Nat
   originalText : String
@@ -206,6 +209,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
 
       let result : TryTacticResult := {
         filepath := config.infile.toString
+        parentName := step.parentName.toString
         startLine := startPosition.line
         startCol := startPosition.column
         originalText := s!"{s}"
