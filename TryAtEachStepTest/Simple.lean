@@ -14,3 +14,6 @@ theorem foo (a : Nat) : a + 0 = 0 + a := by
 
 theorem parallel {P Q : Prop} (p : P) (q : Q) : P ∧ Q := by
   constructor <;> assumption
+
+def function_on_nats (a b : Nat) : Nat := by
+  exact a + b

@@ -135,6 +135,7 @@ def traverseForest (steps : List (Environment × InfoState)) : StepMap := Id.run
 structure TryTacticResult where
   filepath : String
   parentName : String
+  goalIsProp : Bool
   startLine : Nat
   startCol : Nat
   originalText : String
@@ -172,9 +173,12 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
     IO.eprint "."
     (← IO.getStderr).flush
     let mctx := ti.mctxBefore
-    --let doprint : MetaM _ := Meta.ppGoal g
-    --let x ← doprint.run' (s := { mctx := mctx })
-    --IO.println x
+    let goalIsProp : MetaM Bool := do
+       g.withContext do
+       let ty ← g.getType
+       let ty ← instantiateMVars ty
+       Meta.isProp ty
+    let goalIsProp ← goalIsProp.run' (s := { mctx := mctx })
     let dotac := Term.TermElabM.run (ctx := {declName? := ci.parentDecl?})
                       <| Tactic.run g (Tactic.evalTactic tryTacticStx)
     let ((mvars, _tstate), after_state) ← try
@@ -210,6 +214,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       let result : TryTacticResult := {
         filepath := config.infile.toString
         parentName := parentName.toString
+        goalIsProp
         startLine := startPosition.line
         startCol := startPosition.column
         originalText := s!"{s}"
