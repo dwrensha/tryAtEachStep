@@ -286,10 +286,11 @@ unsafe def processFile (config : Config) : IO Unit := do
   let step_map := traverseForest steps
   let mut results := []
   for (span, step) in step_map do
-    let res ← tryTactic config tryTacticStx span step
-    results := results ++ res
-    pure ()
-    --println! step.stx
+    try
+      let res ← tryTactic config tryTacticStx span step
+      results := results ++ res
+    catch _e =>
+      pure ()
   if let .some outfile := config.outfile then
     IO.FS.writeFile outfile s!"{Lean.toJson results}\n"
   pure ()
