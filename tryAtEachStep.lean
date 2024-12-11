@@ -175,9 +175,12 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
     let mctx := ti.mctxBefore
     let goalIsProp : MetaM Bool := do
        g.withContext do
-       let ty ← g.getType
-       let ty ← instantiateMVars ty
-       Meta.isProp ty
+       try
+         let ty ← g.getType
+         let ty ← instantiateMVars ty
+         Meta.isProp ty
+       catch _ =>
+         return false
     let goalIsProp ← goalIsProp.run' (s := { mctx := mctx })
     let dotac := Term.TermElabM.run (ctx := {declName? := ci.parentDecl?})
                       <| Tactic.run g (Tactic.evalTactic tryTacticStx)
