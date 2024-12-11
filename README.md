@@ -17,8 +17,11 @@ require tryAtEachStep from git "https://github.com/dwrensha/tryAtEachStep" @ "ma
 Then do this:
 
 ```shell
-$ lake exe tryAtEachStep exact? Foo/Bar.lean
+$ lake exe tryAtEachStep exact? Foo/Bar.lean --outfile /tmp/out.json
 ```
+
+Progress will be displayed via stderr as it happens.
+Upon completion, `/tmp/out.json` will contain json describing the results.
 
 ## Example findings:
 
