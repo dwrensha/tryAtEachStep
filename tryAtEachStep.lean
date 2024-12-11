@@ -132,19 +132,34 @@ def traverseForest (steps : List (Environment × InfoState)) : StepMap := Id.run
         step_map := Lean.Elab.InfoTree.foldInfo (visitInfo env) step_map t
   return step_map
 
+/-- The result of trying a new tactic at a tactic step.
+-/
 structure TryTacticResult where
   filepath : String
-  parentName : String
-  goalIsProp : Bool
+
+  /-- The position in the file where the tactic step occurs. -/
   startLine : Nat
   startCol : Nat
+
+  /-- The original tactic syntax as a string. -/
   originalText : String
+
+  /-- The name of the declaration that is being elaborated. -/
+  parentName : String
+
+  /-- True is the goal is a proposition. -/
+  goalIsProp : Bool
+
+  /-- The original term that resulted from fully elaborating this step. -/
   oldProof : String
-  oldProofLength : Nat
+
+  /-- The new term. -/
   newProof : String
-  newProofLength : Nat
-  lengthReduction : Int
+
+  /-- True if the new tactic closes the goal and the old tactic did not. -/
   fewerSteps: Bool
+
+  /-- Message logged by the new tactic (e.g. 'try this ...'). -/
   message : Option String
 deriving Lean.ToJson
 
@@ -213,8 +228,6 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
         IO.eprintln "shortened proof!"
       let e1' ← stringOfTerm e1 ci.mctx g
       let e2' ← stringOfTerm e2 after_state.mctx g
-      let oldProofLength := s!"{e1'}".length
-      let newProofLength := s!"{e2'}".length
 
       let result : TryTacticResult := {
         filepath := config.infile.toString
@@ -224,10 +237,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
         startCol := startPosition.column
         originalText := s!"{s}"
         oldProof := e1'
-        oldProofLength
         newProof := e2'
-        newProofLength
-        lengthReduction := (oldProofLength : Int) - (newProofLength : Int)
         fewerSteps
         message
       }
