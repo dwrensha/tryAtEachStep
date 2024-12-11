@@ -289,8 +289,8 @@ unsafe def processFile (config : Config) : IO Unit := do
     try
       let res ← tryTactic config tryTacticStx span step
       results := results ++ res
-    catch _e =>
-      pure ()
+    catch e =>
+      IO.eprintln s!"{e}"
   if let .some outfile := config.outfile then
     IO.FS.writeFile outfile s!"{Lean.toJson results}\n"
   pure ()
