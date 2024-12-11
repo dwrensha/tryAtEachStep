@@ -139,17 +139,19 @@ structure TryTacticResult where
   startLine : Nat
   startCol : Nat
   originalText : String
+  oldProof : String
   oldProofLength : Nat
+  newProof : String
   newProofLength : Nat
   lengthReduction : Int
   fewerSteps: Bool
   message : Option String
 deriving Lean.ToJson
 
-def stringOfTerm (e : Expr) (mctx : MetavarContext) : CoreM String := do
-  let mnd : MetaM String := do
-      let e' ← instantiateMVars e
-      return s!"{e'}"
+def stringOfTerm (e : Expr) (mctx : MetavarContext) (g : MVarId): CoreM String := do
+  let mnd : MetaM String := g.withContext do
+        let pe ← PrettyPrinter.ppExpr e
+        return Std.Format.pretty pe
   let (s, _) ← mnd.run {} { mctx := mctx }
   return s
 
@@ -209,8 +211,8 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       let fewerSteps := 0 < ti.goalsAfter.length
       if fewerSteps then
         IO.eprintln "shortened proof!"
-      let e1' ← stringOfTerm e1 ci.mctx
-      let e2' ← stringOfTerm e2 after_state.mctx
+      let e1' ← stringOfTerm e1 ci.mctx g
+      let e2' ← stringOfTerm e2 after_state.mctx g
       let oldProofLength := s!"{e1'}".length
       let newProofLength := s!"{e2'}".length
 
@@ -221,7 +223,9 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
         startLine := startPosition.line
         startCol := startPosition.column
         originalText := s!"{s}"
+        oldProof := e1'
         oldProofLength
+        newProof := e2'
         newProofLength
         lengthReduction := (oldProofLength : Int) - (newProofLength : Int)
         fewerSteps
