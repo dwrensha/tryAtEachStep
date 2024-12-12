@@ -42,7 +42,20 @@ def spawnChild (config : Config) (p : System.FilePath) :
               "--outfile", outfile]
   }
 
+/--
+Do a null run of `lake exe tryAtEachStep`.
+-/
+def trialRun : IO Unit := do
+  let child ← IO.Process.spawn {
+    stdout := IO.Process.Stdio.null
+    stderr := IO.Process.Stdio.null
+    cmd := "lake"
+    args := #["exe", "tryAtEachStep"]
+  }
+  let _ ← child.wait
+
 unsafe def main (config : Config) : IO Unit := do
+  trialRun
   IO.FS.createDirAll config.outdir
   let paths ← config.directory.walkDir
   let total := paths.size
