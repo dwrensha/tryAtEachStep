@@ -44,6 +44,9 @@ def spawnChild (config : Config) (p : System.FilePath) :
 
 /--
 Do a null run of `lake exe tryAtEachStep`.
+Lake can get confused if multiple processes call `lake exe`
+in parallel on an unbuilt target. Therefore, we make a null
+call via this function before spawning any parallel work.
 -/
 def trialRun : IO Unit := do
   let child ← IO.Process.spawn {
@@ -68,13 +71,14 @@ unsafe def main (config : Config) : IO Unit := do
       paths := ps
       children := children.push (some (← spawnChild config p))
 
-  let num_finished := 0
+  let mut num_finished := 0
   while children.any Option.isSome do
      for ii in [0:children.size] do
         if let some c := children[ii]!
         then
           if let some ret ← c.tryWait
           then
+            num_finished := num_finished + 1
             IO.eprintln s!"child finished with code {ret}. Progress: {num_finished} / {total}"
             children := children.set! ii none
             if let p :: ps := paths then
