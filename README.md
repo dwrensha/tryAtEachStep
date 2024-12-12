@@ -21,7 +21,7 @@ $ lake exe tryAtEachStep exact? Foo/Bar.lean --outfile /tmp/out.json
 ```
 
 Progress will be displayed via stderr as it happens.
-Upon completion, `/tmp/out.json` will contain json describing the results.
+Upon completion, `/tmp/out.json` will contain JSON describing the results.
 
 ### running on all files in a directory
 
@@ -64,7 +64,6 @@ Results are written as JSON in the directory `tryAtEachStep-out`
 ## TODO
 
 * Tests
-* Run in parallel on all `.lean` files in a project.
 * Support tactics that aren't imported by the input file.
 * Better handling of situations where there are multiple active goals.
 * Report performance statistics of existing and new tactic.
