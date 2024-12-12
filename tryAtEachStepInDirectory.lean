@@ -33,8 +33,7 @@ def spawnChild (config : Config) (p : System.FilePath) :
   let outstem := outrel.dropRight ".lean".length
   let outfile := (config.outdir / System.FilePath.mk
       (((outstem.replace "/" "_").replace "." "") ++ ".json")).toString
-  println! "Hi {outfile}"
-
+  IO.eprintln s!"running tryAtEachStep on {p.toString}"
   IO.Process.spawn {
     cmd := "lake"
     args := #["exe", "tryAtEachStep",
@@ -49,7 +48,6 @@ unsafe def main (config : Config) : IO Unit := do
   let total := paths.size
   let mut paths := (paths.filter (fun p => p.extension == some "lean")).toList
   let mut children : Array (Option (IO.Process.Child {})) := #[];
-  IO.println s!"paths = {paths}"
   while children.size < config.num_parallel ∧ ¬ paths.isEmpty do
     match paths with
     | [] => break
@@ -71,7 +69,7 @@ unsafe def main (config : Config) : IO Unit := do
               children := children.set! ii (some (← spawnChild config p))
             pure ()
         pure ()
-     pure ()
+     IO.sleep 50 -- don't spend too much cpu busy-waiting
   return ()
 
 def parseArgs (args : Array String) : IO Config := do
