@@ -79,7 +79,7 @@ unsafe def main (config : Config) : IO Unit := do
           if let some ret ← c.tryWait
           then
             num_finished := num_finished + 1
-            IO.eprintln s!"child finished with code {ret}. Progress: {num_finished} / {total}"
+            IO.eprintln s!"\nChild finished with code {ret}. Progress: {num_finished} / {total}"
             children := children.set! ii none
             if let p :: ps := paths then
               paths := ps
