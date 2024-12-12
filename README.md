@@ -23,6 +23,18 @@ $ lake exe tryAtEachStep exact? Foo/Bar.lean --outfile /tmp/out.json
 Progress will be displayed via stderr as it happens.
 Upon completion, `/tmp/out.json` will contain json describing the results.
 
+### running on all files in a directory
+
+The `tryAtEachStepInDirectory` tool runs `tryAtEachStep` on all `.lean` files
+under a given directory. For example:
+
+```shell
+$ lake exe tryAtEachStepInDirectory "with_reducible exact?" YourLibrary -j 31
+```
+
+The `-j 31` argument specifies that 31 jobs should be run in parallel.
+
+
 ## Example findings:
 
 * [mathlib#13335](https://github.com/leanprover-community/mathlib4/pull/13335)
