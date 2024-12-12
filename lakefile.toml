@@ -10,6 +10,9 @@ relaxedAutoImplicit = false
 name = "tryAtEachStep"
 supportInterpreter = true
 
+[[lean_exe]]
+name = "tryAtEachStepInDirectory"
+supportInterpreter = true
 
 [[lean_lib]]
 name = "TryAtEachStepTest"
