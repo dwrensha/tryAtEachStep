@@ -61,8 +61,8 @@ unsafe def main (config : Config) : IO Unit := do
   trialRun
   IO.FS.createDirAll config.outdir
   let paths ← config.directory.walkDir
-  let total := paths.size
   let mut paths := (paths.filter (fun p => p.extension == some "lean")).toList
+  let total := paths.length
   let mut children : Array (Option (IO.Process.Child {})) := #[];
   while children.size < config.num_parallel ∧ ¬ paths.isEmpty do
     match paths with
