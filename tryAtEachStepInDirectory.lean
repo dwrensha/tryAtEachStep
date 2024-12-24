@@ -55,7 +55,6 @@ def gatherResults (config : Config) : IO Unit := do
     | .ok j => pure j
     let .arr a := j | continue
     acc := acc ++ a
-    IO.println s!"{root/filename}"
 
   acc := acc.filterMap fun obj => Id.run do
     match (obj.getObjValD "fewerSteps").getBool? with
@@ -69,8 +68,12 @@ def gatherResults (config : Config) : IO Unit := do
     let .ok old_proof := (obj.getObjValD "oldProof").getStr? | return none
     let .ok new_proof := (obj.getObjValD "newProof").getStr? | return none
 
+    let obj := obj.setObjVal! "oldProof" .null
+    let obj := obj.setObjVal! "newProof" .null
+
     let lengthReduction := (old_proof.length : Int) - new_proof.length
     let obj := obj.setObjVal! "lengthReduction" (.num (Lean.JsonNumber.fromInt lengthReduction))
+
     .some obj
 
   acc := acc.qsort (fun o1 o2 => Id.run do
