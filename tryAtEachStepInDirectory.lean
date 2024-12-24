@@ -24,6 +24,7 @@ structure Config where
   outdir : System.FilePath := "tryAtEachStep-out"
   additionalImports : List String := []
   num_parallel : Nat := 7
+  filter_by_fewer_steps : Bool := true
 
 def spawnChild (config : Config) (p : System.FilePath) :
     IO (IO.Process.Child {}) := do
@@ -57,9 +58,10 @@ def gatherResults (config : Config) : IO Unit := do
     acc := acc ++ a
 
   acc := acc.filterMap fun obj => Id.run do
-    match (obj.getObjValD "fewerSteps").getBool? with
-    | .ok false | .error _ => return .none
-    | .ok true => pure ()
+    if config.filter_by_fewer_steps then
+      match (obj.getObjValD "fewerSteps").getBool? with
+      | .ok false | .error _ => return .none
+      | .ok true => pure ()
 
     match (obj.getObjValD "goalIsProp").getBool? with
     | .ok false | .error _ => return .none
@@ -153,6 +155,14 @@ def parseArgs (args : Array String) : IO Config := do
     then
       idx := idx + 1
       cfg := {cfg with num_parallel := args[idx]!.toNat!}
+    else if args[idx]! == "--filter-by-fewer-steps"
+    then
+      idx := idx + 1
+      let v ← match args[idx]! with
+      | "true" => pure true
+      | "false" => pure false
+      | _ => throw $ IO.userError s!"failed to parse bool from {args[idx]!}"
+      cfg := {cfg with filter_by_fewer_steps := v}
     else if positional_count == 0
     then
       let tac := args[idx]!
