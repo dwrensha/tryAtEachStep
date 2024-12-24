@@ -32,7 +32,7 @@ def spawnChild (config : Config) (p : System.FilePath) :
   let outrel := pabs.toString.drop indir.toString.length
   let outstem := outrel.dropRight ".lean".length
   let outfile := (config.outdir / System.FilePath.mk
-      (((outstem.replace "/" "_").replace "." "") ++ ".json")).toString
+      ("file:" ++ ((outstem.replace "/" "_").replace "." "") ++ ".json")).toString
   IO.eprintln s!"running tryAtEachStep on {p.toString}"
   IO.Process.spawn {
     cmd := "lake"
@@ -41,6 +41,47 @@ def spawnChild (config : Config) (p : System.FilePath) :
               p.toString,
               "--outfile", outfile]
   }
+
+def gatherResults (config : Config) : IO Unit := do
+  let mut acc : Array Lean.Json := #[]
+  for ⟨root, filename⟩ in ← config.outdir.readDir do
+    if ¬ filename.startsWith "file:" then continue
+    let contents ← IO.FS.readFile (root / filename)
+    let r := Lean.Json.parse contents
+    let j ← match r with
+    | .error s => do
+      IO.eprintln s
+      continue
+    | .ok j => pure j
+    let .arr a := j | continue
+    acc := acc ++ a
+    IO.println s!"{root/filename}"
+
+  acc := acc.filterMap fun obj => Id.run do
+    match (obj.getObjValD "fewerSteps").getBool? with
+    | .ok false | .error _ => return .none
+    | .ok true => pure ()
+
+    match (obj.getObjValD "goalIsProp").getBool? with
+    | .ok false | .error _ => return .none
+    | .ok true => pure ()
+
+    let .ok old_proof := (obj.getObjValD "oldProof").getStr? | return none
+    let .ok new_proof := (obj.getObjValD "newProof").getStr? | return none
+
+    let lengthReduction := (old_proof.length : Int) - new_proof.length
+    let obj := obj.setObjVal! "lengthReduction" (.num (Lean.JsonNumber.fromInt lengthReduction))
+    .some obj
+
+  acc := acc.qsort (fun o1 o2 => Id.run do
+    let .ok lr1 := (o1.getObjValD "lengthReduction").getInt? | return false
+    let .ok lr2 := (o2.getObjValD "lengthReduction").getInt? | return false
+    return lr1 > lr2)
+
+  let s := Lean.Json.pretty (.arr acc)
+  let resultsPath := config.outdir / "RESULTS.json"
+  IO.FS.writeFile resultsPath s
+  IO.eprintln s!"Wrote results to {resultsPath}"
 
 /--
 Do a null run of `lake exe tryAtEachStep`.
@@ -87,6 +128,8 @@ unsafe def main (config : Config) : IO Unit := do
             pure ()
         pure ()
      IO.sleep 50 -- don't spend too much cpu busy-waiting
+  IO.println "\nDone! Now collecting results..."
+  gatherResults config
   return ()
 
 def parseArgs (args : Array String) : IO Config := do
