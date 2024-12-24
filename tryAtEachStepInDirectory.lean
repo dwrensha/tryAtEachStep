@@ -133,7 +133,7 @@ unsafe def main (config : Config) : IO Unit := do
             pure ()
         pure ()
      IO.sleep 50 -- don't spend too much cpu busy-waiting
-  IO.println "\nDone! Now collecting results..."
+  IO.eprintln "\nDone! Now collecting results..."
   gatherResults config
   return ()
 
