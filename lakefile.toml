@@ -1,5 +1,5 @@
 name = "tryAtEachStep"
-defaultTargets = ["tryAtEachStep"]
+defaultTargets = ["tryAtEachStep", "tryAtEachStepInDirectory"]
 
 [leanOptions]
 pp.unicode.fun = true
