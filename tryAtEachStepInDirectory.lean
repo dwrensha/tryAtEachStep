@@ -6,6 +6,14 @@ Authors: David Renshaw
 
 import Lean
 
+namespace Json
+
+def eraseKey (k : String) : Lean.Json → Lean.Json
+| .obj kvs => .obj (kvs.erase Ord.compare k)
+| other => other
+
+end Json
+
 namespace TryAtEachStepInDirectory
 
 /--
@@ -83,8 +91,8 @@ def gatherResults (config : Config) : IO Unit := do
     let .ok old_proof := (obj.getObjValD "oldProof").getStr? | return none
     let .ok new_proof := (obj.getObjValD "newProof").getStr? | return none
 
-    let obj := obj.setObjVal! "oldProof" .null
-    let obj := obj.setObjVal! "newProof" .null
+    let obj := Json.eraseKey "oldProof" obj
+    let obj := Json.eraseKey "newProof" obj
 
     let lengthReduction := (old_proof.length : Int) - new_proof.length
     let obj := obj.setObjVal! "lengthReduction" (.num (Lean.JsonNumber.fromInt lengthReduction))
@@ -197,7 +205,8 @@ def parseArgs (args : Array String) : IO Config := do
     -- Generate a randomly-named directory and make a symlink to it.
     let basedirname := "tryAtEachStep-out"
     let fulldirname := basedirname ++ "-" ++ toHex (← IO.getRandomBytes 4)
-    IO.FS.removeFile basedirname
+    try IO.FS.removeFile basedirname
+    catch _ => pure ()
     let child ← IO.Process.spawn {
       stdout := IO.Process.Stdio.null
       stderr := IO.Process.Stdio.null
