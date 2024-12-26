@@ -119,6 +119,7 @@ def trialRun : IO Unit := do
 unsafe def main (config : Config) : IO Unit := do
   trialRun
   IO.FS.createDirAll config.outdir
+  IO.eprintln s!"output directory: {config.outdir}"
   let paths ← config.directory.walkDir
   let mut paths := (paths.filter (fun p => p.extension == some "lean")).toList
   let total := paths.length
