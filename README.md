@@ -34,8 +34,9 @@ $ lake exe tryAtEachStepInDirectory "with_reducible exact?" YourLibrary -j 31
 
 The `-j 31` argument specifies that 31 jobs should be run in parallel.
 
-Results are written as JSON in the directory `tryAtEachStep-out`
-(or a different directory specified by `--outdir`).
+Results are written as JSON in a directory with name `tryAtEachStep-out-XXXXXXXX`,
+where the X's get filled in randomly.
+You can specify a different output directory via `--outdir`.
 
 
 ## Example findings:

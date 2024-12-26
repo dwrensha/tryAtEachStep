@@ -18,10 +18,23 @@ def toAbsolute (path : System.FilePath) : IO System.FilePath := do
     let cwd ← IO.currentDir
     pure $ cwd / path
 
+def toHex (bytes : ByteArray) : String := Id.run do
+  let digits := "0123456789abcdef".toList
+  let mut result := ""
+  for b in bytes do
+    let br := b &&& 0xf
+    let bl := (b &&& 0xf0) >>> 4
+    result := result.push (digits.get! bl.toNat)
+    result := result.push (digits.get! br.toNat)
+  return result
+
 structure Config where
   tac : String := "exact?"
   directory : System.FilePath := ""
-  outdir : System.FilePath := "tryAtEachStep-out"
+
+  -- If not explicitly set, then a randomized local directory name is generated.
+  outdir : System.FilePath := ""
+
   additionalImports : List String := []
   num_parallel : Nat := 7
   filter_by_fewer_steps : Bool := true
@@ -178,6 +191,9 @@ def parseArgs (args : Array String) : IO Config := do
 
     idx := idx + 1
     pure ()
+
+  if cfg.outdir == "" then
+    cfg := {cfg with outdir := "tryAtEachStep-out-" ++ toHex (← IO.getRandomBytes 4)}
 
   if positional_count != 2
   then
