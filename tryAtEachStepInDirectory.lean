@@ -194,7 +194,18 @@ def parseArgs (args : Array String) : IO Config := do
     pure ()
 
   if cfg.outdir == "" then
-    cfg := {cfg with outdir := "tryAtEachStep-out-" ++ toHex (← IO.getRandomBytes 4)}
+    -- Generate a randomly-named directory and make a symlink to it.
+    let basedirname := "tryAtEachStep-out"
+    let fulldirname := basedirname ++ "-" ++ toHex (← IO.getRandomBytes 4)
+    IO.FS.removeFile basedirname
+    let child ← IO.Process.spawn {
+      stdout := IO.Process.Stdio.null
+      stderr := IO.Process.Stdio.null
+      cmd := "ln"
+      args := #["-s", fulldirname, basedirname]
+    }
+    let _ ← child.wait
+    cfg := {cfg with outdir := fulldirname}
 
   if positional_count != 2
   then
