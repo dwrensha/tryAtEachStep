@@ -187,6 +187,11 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
   let startPosition := ci.fileMap.toPosition span.startPos
   let s := Substring.mk src span.startPos span.endPos
   for g in ti.goalsBefore do
+    let .some mvarDecl := (← getMCtx).findDecl? g | continue
+    if (Lean.isLHSGoal? mvarDecl.type).isSome then
+      -- This is a `conv` goal. Ignore it.
+      continue
+
     let mut newResult : Option TryTacticResult := .none
     IO.eprint "."
     (← IO.getStderr).flush
