@@ -52,6 +52,7 @@ structure Config where
   tac : String := "exact?"
   infile : FilePath := "."
   outfile : Option FilePath := .none
+  doneIfOutfileAlreadyExists : Bool := false
   additionalImports : List String := []
 
 instance : Lean.ToJson String.Pos where
@@ -274,6 +275,11 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
     pure (if s.stxStack.isEmpty then .missing else s.stxStack.back)
 
 unsafe def processFile (config : Config) : IO Unit := do
+  if let .some outfile := config.outfile then
+    if (← outfile.pathExists) ∧ config.doneIfOutfileAlreadyExists then
+      IO.eprintln s!"Already done because outfile {outfile} already exists."
+      return ()
+
   searchPathRef.set compile_time_search_path%
   let mut input ← IO.FS.readFile config.infile
   for im in config.additionalImports do
@@ -339,6 +345,14 @@ def parseArgs (args : Array String) : IO Config := do
     then
       idx := idx + 1
       cfg := {cfg with outfile := args[idx]!}
+    else if args[idx]! == "--done-if-outfile-already-exists"
+    then
+      idx := idx + 1
+      let v ← match args[idx]! with
+      | "true" => pure true
+      | "false" => pure false
+      | _ => throw $ IO.userError s!"failed to parse bool from {args[idx]!}"
+      cfg := {cfg with doneIfOutfileAlreadyExists := v}
     else if positional_count == 0
     then
       let tac := args[idx]!

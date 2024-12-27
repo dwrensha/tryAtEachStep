@@ -47,23 +47,6 @@ structure Config where
   num_parallel : Nat := 7
   filter_by_fewer_steps : Bool := true
 
-def spawnChild (config : Config) (p : System.FilePath) :
-    IO (IO.Process.Child {}) := do
-  let indir ← toAbsolute config.directory
-  let pabs ← toAbsolute p
-  let outrel := pabs.toString.drop indir.toString.length
-  let outstem := outrel.dropRight ".lean".length
-  let outfile := (config.outdir / System.FilePath.mk
-      ("file:" ++ ((outstem.replace "/" "_").replace "." "") ++ ".json")).toString
-  IO.eprintln s!"running tryAtEachStep on {p.toString}"
-  IO.Process.spawn {
-    cmd := "lake"
-    args := #["exe", "tryAtEachStep",
-              config.tac,
-              p.toString,
-              "--outfile", outfile]
-  }
-
 def gatherResults (config : Config) : IO Unit := do
   let mut acc : Array Lean.Json := #[]
   for ⟨root, filename⟩ in ← config.outdir.readDir do
@@ -108,6 +91,24 @@ def gatherResults (config : Config) : IO Unit := do
   let resultsPath := config.outdir / "RESULTS.json"
   IO.FS.writeFile resultsPath s
   IO.eprintln s!"Wrote results to {resultsPath}"
+
+def spawnChild (config : Config) (p : System.FilePath) :
+    IO (IO.Process.Child {}) := do
+  let indir ← toAbsolute config.directory
+  let pabs ← toAbsolute p
+  let outrel := pabs.toString.drop indir.toString.length
+  let outstem := outrel.dropRight ".lean".length
+  let outfile := (config.outdir / System.FilePath.mk
+      ("file:" ++ ((outstem.replace "/" "_").replace "." "") ++ ".json")).toString
+  IO.eprintln s!"running tryAtEachStep on {p.toString}"
+  IO.Process.spawn {
+    cmd := "lake"
+    args := #["exe", "tryAtEachStep",
+              config.tac,
+              p.toString,
+              "--outfile", outfile,
+              "--done-if-outfile-already-exists", "true"]
+  }
 
 /--
 Do a null run of `lake exe tryAtEachStep`.
