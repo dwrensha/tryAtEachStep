@@ -87,7 +87,7 @@ def gatherResults (config : Config) : IO Unit := do
     let .ok lr2 := (o2.getObjValD "lengthReduction").getInt? | return false
     return lr1 > lr2)
 
-  let s := Lean.Json.pretty (.arr acc)
+  let s := Lean.Json.pretty (.arr acc) ++ "\n"
   let resultsPath := config.outdir / "RESULTS.json"
   IO.FS.writeFile resultsPath s
   IO.eprintln s!"Wrote results to {resultsPath}"
