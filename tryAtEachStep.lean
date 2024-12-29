@@ -164,12 +164,27 @@ structure TryTacticResult where
   message : Option String
 deriving Lean.ToJson
 
-def stringOfTerm (e : Expr) (mctx : MetavarContext) (g : MVarId): CoreM String := do
+def stringOfTerm (e : Expr) (mctx : MetavarContext) (g : MVarId) : CoreM String := do
   let mnd : MetaM String := g.withContext do
         let pe ← PrettyPrinter.ppExpr e
         return Std.Format.pretty pe
   let (s, _) ← mnd.run {} { mctx := mctx }
   return s
+
+/-- Returns true if the goal has unassigned mvars in its hypothesis or its target type. -/
+def hasUnassignedMVars (mctx : MetavarContext) (g : MVarId) : MetaM Bool := do
+  let go : MetaM Bool := g.withContext  do
+    let a ← Lean.Meta.getMVars (← g.getType)
+    if a.size > 0 then
+      return true
+    for d in ← getLCtx do
+      if !d.isImplementationDetail then
+        let a ← Lean.Meta.getMVars d.type
+        if a.size > 0 then
+          return true
+    return false
+  let (b, _) ← go.run {} { mctx := mctx }
+  return b
 
 def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : Step) :
     IO (List TryTacticResult) := do
@@ -187,9 +202,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
   let startPosition := ci.fileMap.toPosition span.startPos
   let s := Substring.mk src span.startPos span.endPos
   for g in ti.goalsBefore do
-    let .some mvarDecl := (← getMCtx).findDecl? g | continue
-    if (Lean.isLHSGoal? mvarDecl.type).isSome then
-      -- This is a `conv` goal. Ignore it.
+    if ← hasUnassignedMVars ti.mctxBefore g then
       continue
 
     let mut newResult : Option TryTacticResult := .none
