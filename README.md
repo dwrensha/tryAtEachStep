@@ -8,8 +8,15 @@ find ways in which your existing proofs can be improved.
 
 ## howto
 
-Add this to your lakefile.lean:
+Add this to your `lakefile.toml`:
 
+```toml
+[[require]]
+name = "tryAtEachStep"
+git = "https://github.com/dwrensha/tryAtEachStep"
+rev = "main"
+```
+or to your `lakefile.lean`:
 ```lean
 require tryAtEachStep from git "https://github.com/dwrensha/tryAtEachStep" @ "main"
 ```
