@@ -16,10 +16,6 @@ name = "tryAtEachStep"
 git = "https://github.com/dwrensha/tryAtEachStep"
 rev = "main"
 ```
-or to your `lakefile.lean`:
-```lean
-require tryAtEachStep from git "https://github.com/dwrensha/tryAtEachStep" @ "main"
-```
 
 Then do this:
 
