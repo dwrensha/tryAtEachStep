@@ -101,13 +101,18 @@ def spawnChild (config : Config) (p : System.FilePath) :
   let outfile := (config.outdir / System.FilePath.mk
       ("file:" ++ ((outstem.replace "/" "_").replace "." "") ++ ".json")).toString
   IO.eprintln s!"running tryAtEachStep on {p.toString}"
-  IO.Process.spawn {
-    cmd := "lake"
-    args := #["exe", "tryAtEachStep",
+  let mut args : Array String :=
+    #["exe", "tryAtEachStep",
               config.tac,
               p.toString,
               "--outfile", outfile,
               "--done-if-outfile-already-exists", "true"]
+  if config.additionalImports.length > 0 then
+    args := args ++ #["--imports", ",".intercalate config.additionalImports]
+
+  IO.Process.spawn {
+    cmd := "lake"
+    args := args
   }
 
 /--
