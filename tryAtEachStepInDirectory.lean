@@ -77,14 +77,14 @@ def gatherResults (config : Config) : IO Unit := do
     let obj := Json.eraseKey "oldProof" obj
     let obj := Json.eraseKey "newProof" obj
 
-    let lengthReduction := (old_proof.length : Int) - new_proof.length
-    let obj := obj.setObjVal! "lengthReduction" (.num (Lean.JsonNumber.fromInt lengthReduction))
+    let proofTermLengthReduction := (old_proof.length : Int) - new_proof.length
+    let obj := obj.setObjVal! "proofTermLengthReduction" (.num (Lean.JsonNumber.fromInt proofTermLengthReduction))
 
     .some obj
 
   acc := acc.qsort (fun o1 o2 => Id.run do
-    let .ok lr1 := (o1.getObjValD "lengthReduction").getInt? | return false
-    let .ok lr2 := (o2.getObjValD "lengthReduction").getInt? | return false
+    let .ok lr1 := (o1.getObjValD "proofTermLengthReduction").getInt? | return false
+    let .ok lr2 := (o2.getObjValD "proofTermLengthReduction").getInt? | return false
     return lr1 > lr2)
 
   let s := Lean.Json.pretty (.arr acc) ++ "\n"
