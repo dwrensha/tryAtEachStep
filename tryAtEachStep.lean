@@ -307,13 +307,13 @@ unsafe def processFile (config : Config) : IO Unit := do
   let (header, parserState, messages) ← Parser.parseHeader inputCtx
   let (env, messages) ← processHeader header {} messages inputCtx
 
-  let tryTacticStx ← parseTactic env config.tac
-
   if messages.hasErrors then
     for msg in messages.toList do
       if msg.severity == .error then
         IO.eprintln s!"ERROR: {← msg.toString}"
     throw $ IO.userError "Errors during import; aborting"
+
+  let tryTacticStx ← parseTactic env config.tac
 
   let env := env.setMainModule (← moduleNameOfFileName config.infile none)
   let commandState := { Command.mkState env messages {} with infoState.enabled := true }
