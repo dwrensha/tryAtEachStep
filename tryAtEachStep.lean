@@ -220,95 +220,91 @@ def hasUnassignedMVars (mctx : MetavarContext) (g : MVarId) : MetaM Bool := do
   return b
 
 def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : Step) :
-    IO (List TryTacticResult) := do
+    IO (Option TryTacticResult) := do
   -- For now, we ignore cases where a tactic applies to multiple goals simultaneously.
-  let [{ci, ti, env}] := step.focused_steps | do IO.eprint "_"; return []
+  let [{ci, ti, env}] := step.focused_steps | do IO.eprint "_"; return none
 
-  let some parentName := ci.parentDecl? | return []
+  let some parentName := ci.parentDecl? | return none
 
   ci.runMetaM default do
-  let mut results := []
 
   setEnv env
   let src := ci.fileMap.source
 
   let startPosition := ci.fileMap.toPosition span.startPos
   let s := Substring.mk src span.startPos span.endPos
-  for g in ti.goalsBefore do
-    if ← hasUnassignedMVars ti.mctxBefore g then
-      continue
+  let [g] := ti.goalsBefore | return none
+  if ← hasUnassignedMVars ti.mctxBefore g then return none
 
-    let mut newResult : Option TryTacticResult := .none
-    IO.eprint "."
-    (← IO.getStderr).flush
-    let mctx := ti.mctxBefore
-    let goalIsProp : MetaM Bool := do
-       g.withContext do
-       try
-         let ty ← g.getType
-         let ty ← instantiateMVars ty
-         Meta.isProp ty
-       catch _ =>
-         return false
-    let goalIsProp ← goalIsProp.run' (s := { mctx := mctx })
-    let dotac := Term.TermElabM.run (ctx := {declName? := ci.parentDecl?})
-                      <| Tactic.run g (Tactic.evalTactic tryTacticStx)
-    let ((mvars, _tstate), after_state) ← try
-        dotac.run {} { mctx := mctx }
-       catch _e =>
-        --println! "caught: {←e.toMessageData.toString}"
-        continue
-    let msgs := (← liftM (m := CoreM) get).messages
-    if mvars.length == 0
-    then
-      let (e1, e2) ← match ti.mctxAfter.getExprAssignmentExp g,
-                     after_state.mctx.getExprAssignmentExp g with
-       | some e1, some e2 =>
-          if e1 == e2 then
-            IO.eprint "="
-            continue
-          else
-            pure (e1, e2)
-       | _, _ => continue
-      IO.eprintln s!"\nline {startPosition.line}, col {startPosition.column}:\n{s}"
-      let mut message := ""
-      for msg in msgs.toList do
-        IO.eprintln s!"* {←msg.data.toString}"
-        message := message ++ s!"{←msg.data.toString}"
-      let fewerSteps := 0 < ti.goalsAfter.length
-      if fewerSteps then
-        IO.eprintln "shortened proof!"
-      let e1' ← stringOfTerm e1 ci.mctx g
-      let e2' ← stringOfTerm e2 after_state.mctx g
+  let mut newResult : Option TryTacticResult := .none
+  IO.eprint "."
+  (← IO.getStderr).flush
+  let mctx := ti.mctxBefore
+  let goalIsProp : MetaM Bool := do
+     g.withContext do
+     try
+       let ty ← g.getType
+       let ty ← instantiateMVars ty
+       Meta.isProp ty
+     catch _ =>
+       return false
+  let goalIsProp ← goalIsProp.run' (s := { mctx := mctx })
+  let dotac := Term.TermElabM.run (ctx := {declName? := ci.parentDecl?})
+                    <| Tactic.run g (Tactic.evalTactic tryTacticStx)
+  let ((mvars, _tstate), after_state) ← try
+      dotac.run {} { mctx := mctx }
+     catch _e =>
+      --println! "caught: {←e.toMessageData.toString}"
+      return none
+  let msgs := (← liftM (m := CoreM) get).messages
+  if mvars.length == 0
+  then
+    let (e1, e2) ← match ti.mctxAfter.getExprAssignmentExp g,
+                   after_state.mctx.getExprAssignmentExp g with
+     | some e1, some e2 =>
+        if e1 == e2 then
+          IO.eprint "="
+          return none
+        else
+          pure (e1, e2)
+     | _, _ => return none
+    IO.eprintln s!"\nline {startPosition.line}, col {startPosition.column}:\n{s}"
+    let mut message := ""
+    for msg in msgs.toList do
+      IO.eprintln s!"* {←msg.data.toString}"
+      message := message ++ s!"{←msg.data.toString}"
+    let fewerSteps := 0 < ti.goalsAfter.length
+    if fewerSteps then
+      IO.eprintln "shortened proof!"
+    let e1' ← stringOfTerm e1 ci.mctx g
+    let e2' ← stringOfTerm e2 after_state.mctx g
 
-      let oldText := s!"{s}"
-      let mut oldToEndOfBranch := oldText
-      if let some seqStx := step.seqStx then
-        if let some tp := seqStx.getTailPos? then
-          oldToEndOfBranch := (Substring.mk src span.startPos tp).toString
+    let oldText := s!"{s}"
+    let mut oldToEndOfBranch := oldText
+    if let some seqStx := step.seqStx then
+      if let some tp := seqStx.getTailPos? then
+        oldToEndOfBranch := (Substring.mk src span.startPos tp).toString
 
-      let result : TryTacticResult := {
-        filepath := config.infile.toString
-        parentName := parentName.toString
-        goalIsProp
-        startLine := startPosition.line
-        startCol := startPosition.column
-        oldText
-        newText := config.tac
-        oldToEndOfBranch
-        oldProof := e1'
-        newProof := e2'
-        fewerSteps
-        message
-      }
-      newResult := result
-    let traceState := (← liftM (m := CoreM) get).traceState
-    for t in traceState.traces.toList do
-      IO.eprintln s!"> {←t.msg.toString}"
+    let result : TryTacticResult := {
+      filepath := config.infile.toString
+      parentName := parentName.toString
+      goalIsProp
+      startLine := startPosition.line
+      startCol := startPosition.column
+      oldText
+      newText := config.tac
+      oldToEndOfBranch
+      oldProof := e1'
+      newProof := e2'
+      fewerSteps
+      message
+    }
+    newResult := result
+  let traceState := (← liftM (m := CoreM) get).traceState
+  for t in traceState.traces.toList do
+    IO.eprintln s!"> {←t.msg.toString}"
 
-    if let .some nr := newResult
-    then results := nr :: results
-  return results
+  return newResult
 
 partial def processCommands : Frontend.FrontendM (List (Environment × InfoState)) := do
   let env := (←get).commandState.env
@@ -338,8 +334,8 @@ def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepM
   let mut results := []
   for (span, step) in step_map do
     try
-      let res ← tryTactic config tryTacticStx span step
-      results := results ++ res
+      if let .some res ← tryTactic config tryTacticStx span step then
+         results := results ++ [res]
     catch e =>
       IO.eprintln s!"{e}"
   return results
