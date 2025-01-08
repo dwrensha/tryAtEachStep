@@ -102,6 +102,7 @@ structure Step where
   focused_steps: List FocusedStep
 
 abbrev StepMap := RBMap Span Step Ord.compare
+abbrev SpanSet := RBMap Span Unit Ord.compare
 
 def StepMap.empty : StepMap := RBMap.empty
 
@@ -332,10 +333,21 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
 def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepMap) :
     IO (List TryTacticResult) := do
   let mut results := []
+  let mut proved_branches : SpanSet := RBMap.empty
   for (span, step) in step_map do
+    let seqSpan := if let .some seqStx := step.seqStx
+                   then Span.ofSyntax seqStx
+                   else none
+    if let .some sp := seqSpan
+    then if proved_branches.contains sp then
+      continue -- we've already proved this branch
+
     try
       if let .some res ← tryTactic config tryTacticStx span step then
          results := results ++ [res]
+         if let .some sp := seqSpan
+         then proved_branches := proved_branches.insert sp ()
+
     catch e =>
       IO.eprintln s!"{e}"
   return results
