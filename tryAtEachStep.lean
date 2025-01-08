@@ -333,6 +333,17 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
   | none =>
     pure (if s.stxStack.isEmpty then .missing else s.stxStack.back)
 
+def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepMap) :
+    IO (List TryTacticResult) := do
+  let mut results := []
+  for (span, step) in step_map do
+    try
+      let res ← tryTactic config tryTacticStx span step
+      results := results ++ res
+    catch e =>
+      IO.eprintln s!"{e}"
+  return results
+
 unsafe def processFile (config : Config) : IO Unit := do
   if let .some outfile := config.outfile then
     if (← outfile.pathExists) ∧ config.doneIfOutfileAlreadyExists then
@@ -362,14 +373,7 @@ unsafe def processFile (config : Config) : IO Unit := do
   let (steps, _frontendState) ← (processCommands.run { inputCtx := inputCtx }).run
     { commandState := commandState, parserState := parserState, cmdPos := parserState.pos }
 
-  let step_map := traverseForest steps
-  let mut results := []
-  for (span, step) in step_map do
-    try
-      let res ← tryTactic config tryTacticStx span step
-      results := results ++ res
-    catch e =>
-      IO.eprintln s!"{e}"
+  let results ← tryTacticAtSteps config tryTacticStx (traverseForest steps)
   if let .some outfile := config.outfile then
     IO.FS.writeFile outfile s!"{Lean.toJson results}\n"
   pure ()
