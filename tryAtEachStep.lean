@@ -95,6 +95,10 @@ executions of the tactic, e.g. after `all_goals` or `<;>`.
 -/
 structure Step where
   stx: Syntax
+
+  /-- Syntax of the enclosing tacticSeq1Indented node, if there is one. -/
+  seqStx : Option Syntax
+
   focused_steps: List FocusedStep
 
 abbrev StepMap := RBMap Span Step Ord.compare
@@ -102,35 +106,58 @@ abbrev StepMap := RBMap Span Step Ord.compare
 def StepMap.empty : StepMap := RBMap.empty
 
 def StepMap.maybe_add (sm : StepMap) (env : Environment)
-    (ci : ContextInfo) (ti : TacticInfo) : StepMap := Id.run do
+    (ci : ContextInfo) (ti : TacticInfo) (seqStx : Option Syntax) : StepMap := Id.run do
   let some span := Span.ofSyntax ti.stx | return sm
   let fs : FocusedStep := ⟨env, ci, ti⟩
   match sm.find? span with
   | some step =>
     let step' := {step with focused_steps := step.focused_steps ++ [fs]}
     return sm.insert span step'
-  | none => return sm.insert span ⟨ti.stx, [fs]⟩
+  | none => return sm.insert span {
+      stx := ti.stx
+      seqStx := seqStx
+      focused_steps := [fs]
+    }
 
-def visitTacticInfo (env : Environment) (ci : ContextInfo) (ti : TacticInfo) (step_map: StepMap) :
+def visitTacticInfo (env : Environment) (ci : ContextInfo)
+    (ti : TacticInfo) (seqStx : Option Syntax) (step_map: StepMap) :
     StepMap := Id.run do
   if not ti.isSubstantive then return step_map
   if let .some (.synthetic ..) := ti.stx.getHeadInfo? then
      -- Not actual concrete syntax the user wrote. Ignore.
      return step_map
-  return StepMap.maybe_add step_map env ci ti
+  return StepMap.maybe_add step_map env ci ti seqStx
 
 def visitInfo (env : Environment) (ci : ContextInfo)
-    (info : Info) (step_map : StepMap)
+    (info : Info) (seqStx : Option Syntax) (step_map : StepMap)
     : StepMap :=
   match info with
-  | .ofTacticInfo ti => visitTacticInfo env ci ti step_map
+  | .ofTacticInfo ti => visitTacticInfo env ci ti seqStx step_map
   | _ => step_map
+
+partial def InfoTree.foldInfo' {α : Type} (f : ContextInfo → Info → (Option Syntax) → α → α)
+    (init : α) : InfoTree → α :=
+  go none none init
+where go ctx? seqStx a
+  | .context ctx t => go (ctx.mergeIntoOuter? ctx?) seqStx a t
+  | .node i ts =>
+    let a := match ctx? with
+      | none => a
+      | some ctx => f ctx i seqStx a
+    let newSeqStx : Option Syntax := match i with
+    | .ofTacticInfo ti =>
+      if let some ``Lean.Parser.Tactic.tacticSeq1Indented := ti.name?
+      then ti.stx
+      else seqStx
+    | _ => seqStx
+    ts.foldl (init := a) (go (i.updateContext? ctx?) newSeqStx)
+  | .hole _ => a
 
 def traverseForest (steps : List (Environment × InfoState)) : StepMap := Id.run do
   let mut step_map := StepMap.empty
   for (env, infoState) in steps do
     for t in infoState.trees.toList do
-        step_map := Lean.Elab.InfoTree.foldInfo (visitInfo env) step_map t
+        step_map := InfoTree.foldInfo' (visitInfo env) step_map t
   return step_map
 
 /-- The result of trying a new tactic at a tactic step.
@@ -143,7 +170,13 @@ structure TryTacticResult where
   startCol : Nat
 
   /-- The original tactic syntax as a string. -/
-  originalText : String
+  oldText : String
+
+  /-- The new tactic syntax as a string. -/
+  newText : String
+
+  /-- The old tactic plus the remaining tactics in the branch, as a string.-/
+  oldToEndOfBranch : String := ""
 
   /-- The name of the declaration that is being elaborated. -/
   parentName : String
@@ -248,13 +281,21 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       let e1' ← stringOfTerm e1 ci.mctx g
       let e2' ← stringOfTerm e2 after_state.mctx g
 
+      let oldText := s!"{s}"
+      let mut oldToEndOfBranch := oldText
+      if let some seqStx := step.seqStx then
+        if let some tp := seqStx.getTailPos? then
+          oldToEndOfBranch := (Substring.mk src span.startPos tp).toString
+
       let result : TryTacticResult := {
         filepath := config.infile.toString
         parentName := parentName.toString
         goalIsProp
         startLine := startPosition.line
         startCol := startPosition.column
-        originalText := s!"{s}"
+        oldText
+        newText := config.tac
+        oldToEndOfBranch
         oldProof := e1'
         newProof := e2'
         fewerSteps
