@@ -338,9 +338,18 @@ def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepM
     let seqSpan := if let .some seqStx := step.seqStx
                    then Span.ofSyntax seqStx
                    else none
+
     if let .some sp := seqSpan
-    then if proved_branches.contains sp then
-      continue -- we've already proved this branch
+    then
+      -- Determine whether we've already proven a branch that subsumes this one.
+      -- TODO: do this in a more efficient way.
+      let mut skipThisOne := false
+      for (k, ()) in proved_branches do
+        if k.startPos ≤ sp.startPos ∧ sp.endPos ≤ k.endPos then
+          skipThisOne := true
+          break
+      if skipThisOne then
+        continue -- we've already proved this branch
 
     try
       if let .some res ← tryTactic config tryTacticStx span step then
