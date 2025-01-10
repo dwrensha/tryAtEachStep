@@ -325,7 +325,7 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
               inputCtx {env := env, options := {}} tokens (Parser.mkParserState inputCtx.input)
   match s.errorMsg with
   | some errorMsg =>
-    println! "failed to parse {str}: {errorMsg}"
+    IO.eprintln s!"failed to parse {str}: {errorMsg}"
     panic! "parse error"
   | none =>
     pure (if s.stxStack.isEmpty then .missing else s.stxStack.back)
