@@ -250,9 +250,9 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
      catch _ =>
        return false
   let goalIsProp ← goalIsProp.run' (s := { mctx := mctx })
-  let dotac := Term.TermElabM.run (ctx := {declName? := ci.parentDecl?})
+  let dotac := Term.TermElabM.run' (ctx := {declName? := ci.parentDecl?})
                     <| Tactic.run g (Tactic.evalTactic tryTacticStx)
-  let ((mvars, _tstate), after_state) ← try
+  let (mvars, after_state) ← try
       dotac.run {} { mctx := mctx }
      catch _e =>
       --println! "caught: {←e.toMessageData.toString}"
