@@ -83,9 +83,6 @@ def Span.ofSyntax (stx: Syntax) : Option Span := do
 
 /-- An individual execution of a tactic. -/
 structure FocusedStep where
-  /-- environment from before the current command -/
-  env: Environment
-
   ci: ContextInfo
   ti: TacticInfo
 
@@ -94,6 +91,9 @@ A textual tactic step in a proof. May represent multiple actual
 executions of the tactic, e.g. after `all_goals` or `<;>`.
 -/
 structure Step where
+  /-- environment from before the current command -/
+  env: Environment
+
   stx: Syntax
 
   /-- Syntax of the enclosing tacticSeq1Indented node, if there is one. -/
@@ -109,12 +109,13 @@ def StepMap.empty : StepMap := RBMap.empty
 def StepMap.maybe_add (sm : StepMap) (env : Environment)
     (ci : ContextInfo) (ti : TacticInfo) (seqStx : Option Syntax) : StepMap := Id.run do
   let some span := Span.ofSyntax ti.stx | return sm
-  let fs : FocusedStep := ⟨env, ci, ti⟩
+  let fs : FocusedStep := ⟨ci, ti⟩
   match sm.find? span with
   | some step =>
     let step' := {step with focused_steps := step.focused_steps ++ [fs]}
     return sm.insert span step'
   | none => return sm.insert span {
+      env
       stx := ti.stx
       seqStx := seqStx
       focused_steps := [fs]
@@ -223,13 +224,13 @@ def hasUnassignedMVars (mctx : MetavarContext) (g : MVarId) : MetaM Bool := do
 def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : Step) :
     IO (Option TryTacticResult) := do
   -- For now, we ignore cases where a tactic applies to multiple goals simultaneously.
-  let [{ci, ti, env}] := step.focused_steps | do IO.eprint "_"; return none
+  let [{ci, ti}] := step.focused_steps | do IO.eprint "_"; return none
 
   let some parentName := ci.parentDecl? | return none
 
   ci.runMetaM default do
 
-  setEnv env
+  setEnv step.env
   let src := ci.fileMap.source
 
   let startPosition := ci.fileMap.toPosition span.startPos
