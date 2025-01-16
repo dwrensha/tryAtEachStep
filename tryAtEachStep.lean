@@ -252,8 +252,10 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
      catch _ =>
        return false
   let goalIsProp ← goalIsProp.run' (s := { mctx := mctx })
-  let dotac := Term.TermElabM.run' (ctx := {declName? := ci.parentDecl?})
-                    <| Tactic.run g (Tactic.evalTactic tryTacticStx)
+  let dotac := do
+    Meta.resetCache
+    Term.TermElabM.run' (ctx := {declName? := ci.parentDecl?})
+                     <| Tactic.run g (Tactic.evalTactic tryTacticStx)
   let (mvars, after_state) ← try
       dotac.run {} { mctx := mctx }
      catch _e =>
@@ -390,7 +392,7 @@ unsafe def processFile (config : Config) : IO Unit := do
   let tryTacticStx ← parseTactic env config.tac
 
   let env := env.setMainModule (← moduleNameOfFileName config.infile none)
-  let opts : Options := Options.empty.insert `maxHeartbeats (DataValue.ofNat 1000)
+  let opts : Options := Options.empty.insert `maxHeartbeats (DataValue.ofNat 10000)
   let commandState := { Command.mkState env messages opts with infoState.enabled := true }
 
   let (steps, _frontendState) ← (processCommands.run { inputCtx := inputCtx }).run
