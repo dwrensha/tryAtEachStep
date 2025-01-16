@@ -390,7 +390,7 @@ unsafe def processFile (config : Config) : IO Unit := do
   let tryTacticStx ← parseTactic env config.tac
 
   let env := env.setMainModule (← moduleNameOfFileName config.infile none)
-  let opts : Options := Options.empty.insert `maxHeartbeats (DataValue.ofNat 1000000)
+  let opts : Options := Options.empty.insert `maxHeartbeats (DataValue.ofNat 1000)
   let commandState := { Command.mkState env messages opts with infoState.enabled := true }
 
   let (steps, _frontendState) ← (processCommands.run { inputCtx := inputCtx }).run
