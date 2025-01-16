@@ -49,6 +49,7 @@ end Lean.Elab.TacticInfo
 namespace TryAtEachStep
 
 structure Config where
+  help : Bool := false
   tac : String := "exact?"
   infile : FilePath := "."
   outfile : Option FilePath := .none
@@ -420,7 +421,10 @@ def parseArgs (args : Array String) : IO Config := do
   let mut idx := 0
   let mut positional_count := 0
   while idx < args.size do
-    if args[idx]! == "--imports"
+    if args[idx]! == "--help"
+    then
+      return {cfg with help := true}
+    else if args[idx]! == "--imports"
     then
       idx := idx + 1
       let imports := args[idx]!.splitOn ","
@@ -458,8 +462,23 @@ def parseArgs (args : Array String) : IO Config := do
     throw $ IO.userError "usage: tryAtEachStep [OPTIONS] TACTIC LEAN_FILE"
   return cfg
 
+def helpMessage : String :=
+"tryAtEachStep: run a tactic at each proof step in a .lean file
+
+  tryAtEachStep [OPTIONS] TACTIC LEAN_FILE
+
+  Options:
+    --outfile OUTFILE                   output JSON file
+    --done-if-outfile-already-exists    exit early if outfile already exists
+    --imports IMPORTS                   inject import statements for modules from this comma-separated list
+
+"
+
 end TryAtEachStep
 
 unsafe def main (args : List String) : IO Unit := do
   let cfg ← TryAtEachStep.parseArgs args.toArray
+  if cfg.help then
+    IO.eprintln TryAtEachStep.helpMessage
+    return
   TryAtEachStep.processFile cfg

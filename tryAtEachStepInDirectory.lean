@@ -37,6 +37,7 @@ def toHex (bytes : ByteArray) : String := Id.run do
   return result
 
 structure Config where
+  help : Bool := false
   tac : String := "exact?"
   directory : System.FilePath := ""
 
@@ -177,6 +178,9 @@ def parseArgs (args : Array String) : IO Config := do
   let mut idx := 0
   let mut positional_count := 0
   while idx < args.size do
+    if args[idx]! == "--help"
+    then
+      return {cfg with help := true}
     if args[idx]! == "--imports"
     then
       idx := idx + 1
@@ -234,9 +238,27 @@ def parseArgs (args : Array String) : IO Config := do
     throw $ IO.userError "usage: tryAtEachStepInDirectory [OPTIONS] TACTIC DIRECTORY"
   return cfg
 
+def helpMessage : String :=
+"tryAtEachStepInDirectory: run a tactic at each proof step in a .lean file
+
+  tryAtEachStepInDirectory [OPTIONS] TACTIC DIRECTORY
+
+  Options:
+    --outdir OUTDIR                     output directory
+    -j JOBS                             run JOBS subprocesses in parallel
+    --filter-by-fewer-steps BOOL        if BOOL is true (the default), then keep only results that
+                                        lower the number of tactic steps in a proof
+    --imports IMPORTS                   inject import statements for modules from this comma-separated list
+
+"
+
 end TryAtEachStepInDirectory
 
 unsafe def main (args : List String) : IO Unit := do
   let cfg ← TryAtEachStepInDirectory.parseArgs args.toArray
+  if cfg.help then
+    IO.eprintln TryAtEachStepInDirectory.helpMessage
+    return
+
   TryAtEachStepInDirectory.main cfg
   pure ()
