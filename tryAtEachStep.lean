@@ -259,6 +259,9 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       --println! "caught: {←e.toMessageData.toString}"
       return none
   let msgs := (← liftM (m := CoreM) get).messages
+  if msgs.hasErrors then
+    IO.eprint "X"
+    return none
   if mvars.length == 0
   then
     let (e1, e2) ← match ti.mctxAfter.getExprAssignmentExp g,
