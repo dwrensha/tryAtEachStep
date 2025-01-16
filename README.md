@@ -20,7 +20,7 @@ rev = "main"
 Then do this:
 
 ```shell
-$ lake exe tryAtEachStep exact? Foo/Bar.lean --outfile /tmp/out.json
+$ lake exe tryAtEachStep "exact?" Foo/Bar.lean --outfile /tmp/out.json
 ```
 
 Progress will be displayed via stderr as it happens.
