@@ -193,8 +193,8 @@ structure TryTacticResult where
   /-- The new term. -/
   newProof : String
 
-  /-- True if the new tactic closes the goal and the old tactic did not. -/
-  fewerSteps: Bool
+  /-- The number of steps the proof is shortened by. -/
+  shortenedStepsCount: Nat
 
   /-- Message logged by the new tactic (e.g. 'try this ...'). -/
   message : Option String
@@ -279,9 +279,9 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
     for msg in msgs.toList do
       IO.eprintln s!"* {←msg.data.toString}"
       message := message ++ s!"{←msg.data.toString}"
-    let fewerSteps := 0 < ti.goalsAfter.length
-    if fewerSteps then
-      IO.eprintln "shortened proof!"
+    if 0 < ti.goalsAfter.length then
+      IO.eprintln s!"shortened proof by {ti.goalsAfter.length} \
+      step{if 1 < ti.goalsAfter.length then "s" else ""}"
     let e1' ← stringOfTerm e1 ci.mctx g
     let e2' ← stringOfTerm e2 after_state.mctx g
 
@@ -302,7 +302,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       oldToEndOfBranch
       oldProof := e1'
       newProof := e2'
-      fewerSteps
+      shortenedStepsCount := ti.goalsAfter.length
       message
     }
     newResult := result
