@@ -158,14 +158,10 @@ where go ctx? seqStx a
 
 def traverseForest (steps : List (Environment × InfoState)) : StepMap := Id.run do
   let mut step_map := StepMap.empty
-
   for (env, infoState) in steps do
     for t in infoState.trees.toList do
         step_map := InfoTree.foldInfo' (visitInfo env) step_map t
-
   return step_map
-
-
 
 /-- The result of trying a new tactic at a tactic step.
 -/
