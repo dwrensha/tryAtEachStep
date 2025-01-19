@@ -353,7 +353,7 @@ def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepM
             {(resultsDict.get! k) with
             shortenedStepsCount := (resultsDict.get! k).shortenedStepsCount + 1 }
           skipThisOne := true
-          -- keep going to count, even if we already determned to skip this one
+          -- keep going to count, even if we already determined to skip this one
       if skipThisOne then
         continue -- we've already proved this branch
 
