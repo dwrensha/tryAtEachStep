@@ -193,12 +193,12 @@ structure TryTacticResult where
   /-- The new term. -/
   newProof : String
 
-  /-- True if the new tactic closes the goal and the old tactic did not. -/
-  fewerSteps: Bool
+  /-- The number of steps the proof is shortened by. -/
+  shortenedStepsCount: Nat := 0
 
   /-- Message logged by the new tactic (e.g. 'try this ...'). -/
   message : Option String
-deriving Lean.ToJson
+deriving Lean.ToJson, Inhabited
 
 def stringOfTerm (e : Expr) (mctx : MetavarContext) (g : MVarId) : CoreM String := do
   let mnd : MetaM String := g.withContext do
@@ -302,7 +302,6 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
       oldToEndOfBranch
       oldProof := e1'
       newProof := e2'
-      fewerSteps
       message
     }
     newResult := result
@@ -337,8 +336,7 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
 
 def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepMap) :
     IO (List TryTacticResult) := do
-  let mut results := []
-  let mut proved_branches : SpanSet := RBMap.empty
+  let mut resultsDict := Std.HashMap.empty
   for (span, step) in step_map do
     let seqSpan := if let .some seqStx := step.seqStx
                    then Span.ofSyntax seqStx
@@ -349,22 +347,27 @@ def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepM
       -- Determine whether we've already proven a branch that subsumes this one.
       -- TODO: do this in a more efficient way.
       let mut skipThisOne := false
-      for (k, ()) in proved_branches do
+      for k in resultsDict.keys do
         if k.startPos ≤ sp.startPos ∧ sp.endPos ≤ k.endPos then
+          resultsDict := resultsDict.insert k
+            {(resultsDict.get! k) with
+            shortenedStepsCount := (resultsDict.get! k).shortenedStepsCount + 1 }
           skipThisOne := true
-          break
+          -- keep going to count, even if we already determined to skip this one
       if skipThisOne then
         continue -- we've already proved this branch
 
     try
       if let .some res ← tryTactic config tryTacticStx span step then
-         results := results ++ [res]
          if let .some sp := seqSpan
-         then proved_branches := proved_branches.insert sp ()
+         then
+           resultsDict := resultsDict.insert sp {res with shortenedStepsCount := 0}
 
     catch e =>
       IO.eprintln s!"{e}"
-  return results
+
+  return resultsDict.values
+
 
 unsafe def processFile (config : Config) : IO Unit := do
   if let .some outfile := config.outfile then
