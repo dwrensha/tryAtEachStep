@@ -64,9 +64,9 @@ def gatherResults (config : Config) : IO Unit := do
 
   acc := acc.filterMap fun obj => Id.run do
     if config.filter_by_fewer_steps then
-      match (obj.getObjValD "fewerSteps").getBool? with
-      | .ok false | .error _ => return .none
-      | .ok true => pure ()
+      match (obj.getObjValD "shortenedStepsCount").getNat? with
+      | .ok 0 | .error _ => return .none
+      | .ok _ => pure ()
 
     match (obj.getObjValD "goalIsProp").getBool? with
     | .ok false | .error _ => return .none
