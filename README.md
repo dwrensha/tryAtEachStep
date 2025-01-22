@@ -6,6 +6,11 @@ a given Lean 4 file, reporting cases where the tactic closes the goal.
 With a tactic like `exact?` and `rw_search`, this can help to
 find ways in which your existing proofs can be improved.
 
+## video intro
+
+From Lean Together 2025:
+[<img src="http://img.youtube.com/vi/67Ea9WbeAPI/maxresdefault.jpg" height="120px">](https://youtu.be/67Ea9WbeAPI)
+
 ## howto
 
 Add this to your `lakefile.toml`:
