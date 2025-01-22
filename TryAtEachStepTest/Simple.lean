@@ -21,6 +21,13 @@ theorem trivial_branches : True ∧ True := by
     exact this
   · exact trivial
 
+theorem branch_bracketed : 1 = 1 ∧ ∀ a b c : Nat, a + b + c = b + a + c := by
+  constructor
+  { have : True := by exact True.intro
+    exact rfl }
+  · intro a b c
+    ac_rfl
+
 theorem parallel {P Q : Prop} (p : P) (q : Q) : P ∧ Q := by
   constructor <;> assumption
 

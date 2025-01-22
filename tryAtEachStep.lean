@@ -40,6 +40,7 @@ def isSubstantive (t : TacticInfo) : Bool :=
   | some ``Lean.Parser.Term.byTactic => false
   | some ``Lean.Parser.Tactic.tacticSeq => false
   | some ``Lean.Parser.Tactic.tacticSeq1Indented => false
+  | some ``Lean.Parser.Tactic.tacticSeqBracketed => false
   | some ``Lean.Parser.Tactic.«tactic_<;>_» => false
   | some ``Lean.Parser.Tactic.paren => false
   | _ => true
@@ -97,7 +98,8 @@ structure Step where
 
   stx: Syntax
 
-  /-- Syntax of the enclosing tacticSeq1Indented node, if there is one. -/
+  /-- Syntax of the enclosing tacticSeq1Indented or tacticSeqBracketed node,
+      if there is one. -/
   seqStx : Option Syntax
 
   focused_steps: List FocusedStep
@@ -149,9 +151,10 @@ where go ctx? seqStx a
       | some ctx => f ctx i seqStx a
     let newSeqStx : Option Syntax := match i with
     | .ofTacticInfo ti =>
-      if let some ``Lean.Parser.Tactic.tacticSeq1Indented := ti.name?
-      then ti.stx
-      else seqStx
+      match ti.name? with
+      | some ``Lean.Parser.Tactic.tacticSeq1Indented => ti.stx
+      | some ``Lean.Parser.Tactic.tacticSeqBracketed => ti.stx
+      | _ => seqStx
     | _ => seqStx
     ts.foldl (init := a) (go (i.updateContext? ctx?) newSeqStx)
   | .hole _ => a
