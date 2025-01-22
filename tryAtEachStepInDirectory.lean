@@ -46,7 +46,7 @@ structure Config where
 
   additionalImports : List String := []
   num_parallel : Nat := 7
-  filter_by_fewer_steps : Bool := true
+  filter_by_fewer_steps : Bool := false
 
 def gatherResults (config : Config) : IO Unit := do
   let mut acc : Array Lean.Json := #[]
@@ -246,8 +246,9 @@ def helpMessage : String :=
   Options:
     --outdir OUTDIR                     output directory
     -j JOBS                             run JOBS subprocesses in parallel
-    --filter-by-fewer-steps BOOL        if BOOL is true (the default), then keep only results that
-                                        lower the number of tactic steps in a proof
+    --filter-by-fewer-steps BOOL        If BOOL is `true`, then keep only results that
+                                        lower the number of tactic steps in a proof.
+                                        Default is `false`.
     --imports IMPORTS                   inject import statements for modules from this comma-separated list
 
 "
