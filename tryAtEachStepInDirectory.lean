@@ -47,6 +47,7 @@ structure Config where
   additionalImports : List String := []
   num_parallel : Nat := 7
   filter_by_fewer_steps : Bool := false
+  filter_by_is_prop : Bool := true
 
 def gatherResults (config : Config) : IO Unit := do
   let mut acc : Array Lean.Json := #[]
@@ -68,9 +69,10 @@ def gatherResults (config : Config) : IO Unit := do
       | .ok 0 | .error _ => return .none
       | .ok _ => pure ()
 
-    match (obj.getObjValD "goalIsProp").getBool? with
-    | .ok false | .error _ => return .none
-    | .ok true => pure ()
+    if config.filter_by_is_prop then
+      match (obj.getObjValD "goalIsProp").getBool? with
+      | .ok false | .error _ => return .none
+      | .ok true => pure ()
 
     let .ok old_proof := (obj.getObjValD "oldProof").getStr? | return none
     let .ok new_proof := (obj.getObjValD "newProof").getStr? | return none
@@ -202,6 +204,14 @@ def parseArgs (args : Array String) : IO Config := do
       | "false" => pure false
       | _ => throw $ IO.userError s!"failed to parse bool from {args[idx]!}"
       cfg := {cfg with filter_by_fewer_steps := v}
+    else if args[idx]! == "--filter-by-is-prop"
+    then
+      idx := idx + 1
+      let v ← match args[idx]! with
+      | "true" => pure true
+      | "false" => pure false
+      | _ => throw $ IO.userError s!"failed to parse bool from {args[idx]!}"
+      cfg := {cfg with filter_by_is_prop := v}
     else if positional_count == 0
     then
       let tac := args[idx]!
@@ -249,6 +259,9 @@ def helpMessage : String :=
     --filter-by-fewer-steps BOOL        If BOOL is `true`, then keep only results that
                                         lower the number of tactic steps in a proof.
                                         Default is `false`.
+    --filter-by-is-prop BOOL            If BOOL is `true`, then keep only results that
+                                        act on goals that are in `Prop`.
+                                        Default is `true`.
     --imports IMPORTS                   inject import statements for modules from this comma-separated list
 
 "
