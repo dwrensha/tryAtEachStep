@@ -32,8 +32,8 @@ def toHex (bytes : ByteArray) : String := Id.run do
   for b in bytes do
     let br := b &&& 0xf
     let bl := (b &&& 0xf0) >>> 4
-    result := result.push (digits.get! bl.toNat)
-    result := result.push (digits.get! br.toNat)
+    result := result.push (digits[bl.toNat]!)
+    result := result.push (digits[br.toNat]!)
   return result
 
 structure Config where

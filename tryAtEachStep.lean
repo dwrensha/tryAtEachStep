@@ -378,7 +378,7 @@ unsafe def processFile (config : Config) : IO Unit := do
       IO.eprintln s!"Already done because outfile {outfile} already exists."
       return ()
 
-  searchPathRef.set compile_time_search_path%
+  initSearchPath (← findSysroot)
   let mut input ← IO.FS.readFile config.infile
   for im in config.additionalImports do
     input := "import " ++ im ++ "\n" ++ input
