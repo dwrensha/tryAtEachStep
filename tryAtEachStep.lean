@@ -339,7 +339,7 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
 
 def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepMap) :
     IO (List TryTacticResult) := do
-  let mut resultsDict := Std.HashMap.empty
+  let mut resultsDict := Std.HashMap.emptyWithCapacity 300
   for (span, step) in step_map do
     let seqSpan := if let .some seqStx := step.seqStx
                    then Span.ofSyntax seqStx
