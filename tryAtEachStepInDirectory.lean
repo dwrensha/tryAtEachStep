@@ -9,7 +9,7 @@ import Lean
 namespace Json
 
 def eraseKey (k : String) : Lean.Json → Lean.Json
-| .obj kvs => .obj (kvs.erase Ord.compare k)
+| .obj kvs => .obj (kvs.erase k)
 | other => other
 
 end Json
