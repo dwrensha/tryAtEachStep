@@ -3,7 +3,7 @@
 `tryAtEachStep` is a tool that runs a tactic at every proof step in
 a given Lean 4 file, reporting cases where the tactic closes the goal.
 
-With a tactic like `exact?` and `rw_search`, this can help to
+With a tactic like `exact?`, this can help to
 find ways in which your existing proofs can be improved.
 
 ## video intro
