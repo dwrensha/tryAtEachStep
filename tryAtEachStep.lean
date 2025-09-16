@@ -329,7 +329,7 @@ def parseTactic (env : Environment) (str : String) : IO Syntax := do
   let inputCtx := Parser.mkInputContext str "<argument>"
   let tokens := Parser.Module.updateTokens (Parser.getTokenTable env)
   let s := Parser.tacticParser.fn.run
-              inputCtx {env := env, options := {}} tokens (Parser.mkParserState inputCtx.input)
+              inputCtx {env := env, options := {}} tokens (Parser.mkParserState inputCtx.inputString)
   match s.errorMsg with
   | some errorMsg =>
     IO.eprintln s!"failed to parse {str}: {errorMsg}"
