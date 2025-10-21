@@ -57,12 +57,12 @@ structure Config where
   doneIfOutfileAlreadyExists : Bool := false
   additionalImports : List String := []
 
-instance : Lean.ToJson String.Pos where
+instance : Lean.ToJson String.Pos.Raw where
   toJson x := x.1
 
 structure Span where
-  startPos: String.Pos
-  endPos: String.Pos
+  startPos: String.Pos.Raw
+  endPos: String.Pos.Raw
 deriving BEq, Hashable, Lean.ToJson
 
 instance : Ord Span where
