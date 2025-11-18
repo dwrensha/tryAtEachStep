@@ -238,7 +238,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
   let src := ci.fileMap.source
 
   let startPosition := ci.fileMap.toPosition span.startPos
-  let s := Substring.mk src span.startPos span.endPos
+  let s := Substring.Raw.mk src span.startPos span.endPos
   let [g] := ti.goalsBefore | return none
   if ← hasUnassignedMVars ti.mctxBefore g then return none
 
@@ -292,7 +292,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
     let mut oldToEndOfBranch := oldText
     if let some seqStx := step.seqStx then
       if let some tp := seqStx.getTailPos? then
-        oldToEndOfBranch := (Substring.mk src span.startPos tp).toString
+        oldToEndOfBranch := (Substring.Raw.mk src span.startPos tp).toString
 
     let result : TryTacticResult := {
       filepath := config.infile.toString
