@@ -107,7 +107,7 @@ def spawnChild (config : Config) (p : System.FilePath) :
   let indir ← toAbsolute config.directory
   let pabs ← toAbsolute p
   let outrel := pabs.toString.drop indir.toString.length
-  let outstem := outrel.dropRight ".lean".length
+  let outstem := outrel.dropEnd ".lean".length
   let outfile := (config.outdir / System.FilePath.mk
       ("file:" ++ ((outstem.replace "/" "_").replace "." "") ++ ".json")).toString
   IO.eprintln s!"running tryAtEachStep on {p.toString}"

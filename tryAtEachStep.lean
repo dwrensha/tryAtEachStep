@@ -13,6 +13,32 @@ proof step in a given file.
 
 open Lean Elab System
 
+
+/--
+Like `Lean.Elab.ContextInfo.runCoreM`, but forwards the filemap.
+-/
+def Lean.Elab.ContextInfo.runCoreM' {α : Type} (info : ContextInfo) (x : CoreM α) : IO α := do
+  -- We assume that this function is used only outside elaboration, mostly in the language server,
+  -- and so we can and should provide access to information regardless whether it is exported.
+  let env := info.env.setExporting false
+  /-
+    We must execute `x` using the `ngen` stored in `info`. Otherwise, we may create `MVarId`s and `FVarId`s that
+    have been used in `lctx` and `info.mctx`.
+  -/
+  (·.1) <$>
+    (withOptions (fun _ => info.options) x).toIO
+      { currNamespace := info.currNamespace, openDecls := info.openDecls
+        fileName := "<InfoTree>", fileMap := info.fileMap }
+      { env, ngen := info.ngen }
+
+/--
+Like `Lean.Elab.ContextInfo.runMetaM`, but forwards the filemap.
+-/
+def Lean.Elab.ContextInfo.runMetaM' {α : Type}
+    (info : ContextInfo) (lctx : LocalContext) (x : MetaM α) : IO α := do
+  (·.1) <$> info.runCoreM' (x.run { lctx := lctx } { mctx := info.mctx })
+
+
 namespace Lean.Elab.TacticInfo
 
 -- We borrow some stuff from
@@ -232,7 +258,7 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
 
   let some parentName := ci.parentDecl? | return none
 
-  ci.runMetaM default do
+  ci.runMetaM' default do
 
   setEnv step.env
   let src := ci.fileMap.source
