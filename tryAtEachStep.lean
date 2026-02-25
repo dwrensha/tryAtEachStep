@@ -105,8 +105,8 @@ instance : Ord Span where
      | .eq => .eq
 
 def Span.ofSyntax (stx: Syntax) : Option Span := do
-  let startPos ← stx.getPos?
-  let endPos ← stx.getTailPos?
+  let startPos ← stx.getPos? (canonicalOnly := true)
+  let endPos ← stx.getTailPos? (canonicalOnly := true)
   return ⟨startPos, endPos⟩
 
 /-- An individual execution of a tactic. -/
