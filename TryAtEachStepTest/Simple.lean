@@ -33,3 +33,18 @@ theorem parallel {P Q : Prop} (p : P) (q : Q) : P ∧ Q := by
 
 def function_on_nats (a b : Nat) : Nat := by
   exact a + b
+
+theorem calc1 {a b c : Nat} : a + b + c = c + b + a + 0 := by
+  have : a + b + c = c + b + a := by
+    calc _ = b + a + c := by rw [Nat.add_comm a b]
+         _ = _ := by rw [Nat.add_comm _ c]; exact Eq.symm (Nat.add_assoc c b a)
+  rw [Nat.add_zero]
+  exact this
+
+theorem calc2 {a b c : Nat} : a + b + c = c + b + a + 0 := by
+  have : a + b + c = c + b + a := by
+    -- At one point, oldToEndOfBranch erroneously was computed to be empty here.
+    calc _ = b + a + c := by rw [Nat.add_comm a b]
+         _ = _ := by rw [Nat.add_comm _ c]; exact Eq.symm (Nat.add_assoc c b a)
+  rw [Nat.add_zero]
+  exact this

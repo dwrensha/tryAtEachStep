@@ -317,8 +317,9 @@ def tryTactic (config : Config) (tryTacticStx : Syntax) (span : Span) (step : St
     let oldText := s!"{s}"
     let mut oldToEndOfBranch := oldText
     if let some seqStx := step.seqStx then
-      if let some tp := seqStx.getTailPos? then
-        oldToEndOfBranch := (Substring.Raw.mk src span.startPos tp).toString
+      if let some tp := seqStx.getTailPos? (canonicalOnly := true) then
+        if tp.1 ≥ span.startPos.1 then
+          oldToEndOfBranch := (Substring.Raw.mk src span.startPos tp).toString
 
     let result : TryTacticResult := {
       filepath := config.infile.toString
