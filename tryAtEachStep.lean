@@ -396,6 +396,8 @@ def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepM
          if let .some sp := seqSpan
          then
            resultsDict := resultsDict.insert sp {res with shortenedStepsCount := 0}
+         else
+           IO.eprintln "WARNING: no seqSpan; failed to record result"
 
     catch e =>
       IO.eprintln s!"{e}"
