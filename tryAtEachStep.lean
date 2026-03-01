@@ -105,7 +105,11 @@ instance : Ord Span where
      | .eq => .eq
 
 def Span.ofSyntax (stx: Syntax) : Option Span := do
-  let startPos ← stx.getPos? (canonicalOnly := true)
+  -- On seq nodes, canonicalOnly := true sometimes gives us `none`.
+  let startPos ← stx.getPos? (canonicalOnly := false)
+
+  -- We set canonicalOnly := true here to get the full extent of seq nodes. Otherwise
+  -- sometimes we only get `by` without the body.
   let endPos ← stx.getTailPos? (canonicalOnly := true)
   return ⟨startPos, endPos⟩
 
