@@ -405,6 +405,14 @@ def tryTacticAtSteps (config : Config) (tryTacticStx : Syntax) (step_map : StepM
   return resultsDict.values
 
 
+/--
+Add imports to the end of header to ensure they come after the `module` and `prelude` keywords.
+-/
+def addImports (input : String) (bodyStart : String.Pos.Raw) (imports : List String) : String :=
+  let header := String.Pos.Raw.extract input ⟨0⟩ bodyStart
+  let body := String.Pos.Raw.extract input bodyStart input.rawEndPos
+  header ++ String.join (imports.map (fun im => s!"import {im}\n")) ++ body
+
 unsafe def processFile (config : Config) : IO Unit := do
   if let .some outfile := config.outfile then
     if (← outfile.pathExists) ∧ config.doneIfOutfileAlreadyExists then
@@ -413,8 +421,10 @@ unsafe def processFile (config : Config) : IO Unit := do
 
   initSearchPath (← findSysroot)
   let mut input ← IO.FS.readFile config.infile
-  for im in config.additionalImports do
-    input := "import " ++ im ++ "\n" ++ input
+  unless config.additionalImports.isEmpty do
+    let preCtx := Parser.mkInputContext input config.infile.toString
+    let (_, preState, _) ← Parser.parseHeader preCtx
+    input := addImports input preState.pos config.additionalImports
   enableInitializersExecution
   let inputCtx := Parser.mkInputContext input config.infile.toString
   let (header, parserState, messages) ← Parser.parseHeader inputCtx
